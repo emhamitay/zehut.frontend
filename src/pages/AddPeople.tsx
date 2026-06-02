@@ -1,10 +1,10 @@
 import AppLayout from '../components/layout/AppLayout'
-import FileDropZone from '../components/FileDropZone'
+import UploadFlow from '../components/UploadFlow'
 
 export default function AddPeople() {
   return (
     <AppLayout title="הוסף אנשים">
-      <FileDropZone />
+      <UploadFlow />
     </AppLayout>
   )
 }

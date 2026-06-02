@@ -1,14 +1,12 @@
 import { useRef, useState } from 'react'
-import * as XLSX from 'xlsx'
-import mammoth from 'mammoth'
 import clsx from 'clsx'
 
-type State =
-  | { kind: 'idle' }
-  | { kind: 'dragging' }
-  | { kind: 'parsing' }
-  | { kind: 'done'; fileName: string; count: number; label: string }
-  | { kind: 'error'; message: string }
+type Props = {
+  onFile: (file: File) => void
+  busy?: boolean
+  busyLabel?: string
+  error?: string | null
+}
 
 const ACCEPTED = ['.xlsx', '.xls', '.docx']
 
@@ -16,76 +14,40 @@ function accept(file: File): boolean {
   return ACCEPTED.some((ext) => file.name.toLowerCase().endsWith(ext))
 }
 
-async function parseFile(
-  file: File
-): Promise<{ type: 'excel'; rows: Record<string, unknown>[] } | { type: 'docx'; text: string }> {
-  const ext = file.name.split('.').pop()?.toLowerCase()
-
-  if (ext === 'xlsx' || ext === 'xls') {
-    const buffer = await file.arrayBuffer()
-    const workbook = XLSX.read(buffer, { type: 'array' })
-    const sheetName = workbook.SheetNames[0]
-    const sheet = workbook.Sheets[sheetName]
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet)
-    return { type: 'excel', rows }
-  }
-
-  if (ext === 'docx') {
-    const buffer = await file.arrayBuffer()
-    const result = await mammoth.extractRawText({ arrayBuffer: buffer })
-    return { type: 'docx', text: result.value }
-  }
-
-  throw new Error('סוג קובץ לא נתמך')
-}
-
-export default function FileDropZone() {
-  const [state, setState] = useState<State>({ kind: 'idle' })
+export default function FileDropZone({
+  onFile,
+  busy = false,
+  busyLabel = 'מעבד קובץ...',
+  error = null,
+}: Props) {
+  const [isDragging, setIsDragging] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  async function handleFile(file: File) {
+  function handleFile(file: File) {
     if (!accept(file)) {
-      setState({
-        kind: 'error',
-        message: 'סוג קובץ לא נתמך. יש לבחור קובץ xlsx, xls או docx בלבד.',
-      })
+      setLocalError(
+        'סוג קובץ לא נתמך. יש לבחור קובץ xlsx, xls או docx בלבד.'
+      )
       return
     }
-
-    setState({ kind: 'parsing' })
-
-    try {
-      const payload = await parseFile(file)
-
-      await fetch('http://localhost:4000/api/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const count =
-        payload.type === 'excel' ? payload.rows.length : payload.text.length
-      const label = payload.type === 'excel' ? 'שורות' : 'תווים'
-      setState({ kind: 'done', fileName: file.name, count, label })
-    } catch {
-      setState({
-        kind: 'error',
-        message: 'אירעה שגיאה בעיבוד הקובץ. אנא נסה שנית.',
-      })
-    }
+    setLocalError(null)
+    onFile(file)
   }
 
   function onDragOver(e: React.DragEvent) {
     e.preventDefault()
-    if (state.kind !== 'parsing') setState({ kind: 'dragging' })
+    if (!busy) setIsDragging(true)
   }
 
   function onDragLeave() {
-    if (state.kind === 'dragging') setState({ kind: 'idle' })
+    setIsDragging(false)
   }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
+    setIsDragging(false)
+    if (busy) return
     const file = e.dataTransfer.files[0]
     if (file) handleFile(file)
   }
@@ -96,15 +58,17 @@ export default function FileDropZone() {
     e.target.value = ''
   }
 
-  const isDragging = state.kind === 'dragging'
+  const shownError = error ?? localError
 
   return (
     <div
       role="button"
       tabIndex={0}
       aria-label="העלאת קובץ"
-      onClick={() => inputRef.current?.click()}
-      onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
+      onClick={() => !busy && inputRef.current?.click()}
+      onKeyDown={(e) =>
+        e.key === 'Enter' && !busy && inputRef.current?.click()
+      }
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -112,6 +76,7 @@ export default function FileDropZone() {
         'flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3',
         'rounded-xl border border-dashed transition-colors duration-200',
         'select-none text-center',
+        busy && 'cursor-wait opacity-90',
         isDragging
           ? 'border-sky-400 bg-sky-50/60'
           : 'border-border/70 bg-muted/20 hover:border-sky-300 hover:bg-sky-50/30'
@@ -125,7 +90,12 @@ export default function FileDropZone() {
         onChange={onInputChange}
       />
 
-      {(state.kind === 'idle' || state.kind === 'dragging') && (
+      {busy ? (
+        <>
+          <Spinner />
+          <p className="text-sm font-medium text-slate-500">{busyLabel}</p>
+        </>
+      ) : (
         <>
           <UploadIcon
             className={clsx(
@@ -145,25 +115,8 @@ export default function FileDropZone() {
         </>
       )}
 
-      {state.kind === 'parsing' && (
-        <>
-          <Spinner />
-          <p className="text-sm font-medium text-slate-500">מעבד קובץ...</p>
-        </>
-      )}
-
-      {state.kind === 'done' && (
-        <>
-          <CheckIcon className="h-10 w-10 text-sky-500" />
-          <p className="text-sm font-medium text-slate-700">{state.fileName}</p>
-          <p className="text-xs text-slate-400">
-            נמצאו {state.count} {state.label}
-          </p>
-        </>
-      )}
-
-      {state.kind === 'error' && (
-        <p className="px-4 text-sm font-medium text-red-500">{state.message}</p>
+      {shownError && (
+        <p className="px-4 text-sm font-medium text-red-500">{shownError}</p>
       )}
     </div>
   )
@@ -182,24 +135,6 @@ function UploadIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth={1.5}
         d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-      />
-    </svg>
-  )
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="m4.5 12.75 6 6 9-13.5"
       />
     </svg>
   )
