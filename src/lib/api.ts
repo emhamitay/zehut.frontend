@@ -29,14 +29,18 @@ export type ResolveAction =
   | { action: 'new'; incoming: Contact; sourceFile?: string | null }
   | { action: 'skip' }
 
-const BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000').replace(/\/$/, '')
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+
+function apiUrl(path: string): string {
+  return `${API_BASE}${path}`
+}
 
 export async function extractContacts(
   payload:
     | { type: 'excel'; rows: Record<string, unknown>[] }
     | { type: 'docx'; text: string }
 ): Promise<Contact[]> {
-  const res = await fetch(`${BASE}/api/extract`, {
+  const res = await fetch(apiUrl('/api/extract'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -49,7 +53,7 @@ export async function commitContacts(
   contacts: Contact[],
   sourceFile: string | null
 ): Promise<CommitResult> {
-  const res = await fetch(`${BASE}/api/persons/commit`, {
+  const res = await fetch(apiUrl('/api/persons/commit'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contacts, sourceFile }),
@@ -61,7 +65,7 @@ export async function commitContacts(
 export async function resolveConflict(
   action: ResolveAction
 ): Promise<{ person: PersonWithPhones | null }> {
-  const res = await fetch(`${BASE}/api/persons/resolve`, {
+  const res = await fetch(apiUrl('/api/persons/resolve'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(action),
