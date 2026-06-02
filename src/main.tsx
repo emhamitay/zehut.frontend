@@ -1,7 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
-import './index.css'
+import './style/index.css'
+import "./style/shadcn.css"
 
 document.documentElement.lang = 'he'
 document.documentElement.dir = 'rtl'

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
+import clsx from 'clsx'
 import {
   Card,
   CardContent,
@@ -29,31 +29,38 @@ type AppLayoutProps = {
 export default function AppLayout({ title, children }: AppLayoutProps) {
   return (
     <div
-      className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fafc_0%,#f0f9ff_45%,#f8fafc_100%)] px-4 py-8 sm:px-8"
+      className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fafc_0%,#f0f9ff_45%,#f8fafc_100%)] px-4 py-8 text-right sm:px-8"
       dir="rtl"
     >
-      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="grid w-full gap-6 lg:grid-cols-[280px_1fr]">
         <Card className="bg-card/90 shadow-md backdrop-blur">
           <CardHeader>
-            <CardDescription>תפריט</CardDescription>
-            <CardTitle className="text-2xl font-bold tracking-tight">זהות</CardTitle>
+            <CardDescription>בס"ד עמ"ה עש"ו</CardDescription>
+            <CardTitle className="text-2xl font-bold tracking-tight text-sky-200">זהות יהודית</CardTitle>
           </CardHeader>
 
           <CardContent>
-            <Separator className="mb-4" />
-            <nav className="space-y-2">
-              {menuItems.map((item) => (
-                <NavLink key={item.path} to={item.path}>
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? 'default' : 'outline'}
-                      className="w-full justify-start text-base"
+            <Separator className='mb-1'/>
+            <nav className="space-y-0">
+              <div className="flex flex-col items-right gap-2 text-sm">
+                <div className="border-b border-border/70 mt-1" />
+                {menuItems.map((item) => (
+                  <div key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        clsx(
+                          'hover:text-blue-400 text-sky-800 transition-colors duration-200',
+                          isActive && 'text-sky-500 font-bold'
+                        )
+                      }
                     >
                       {item.label}
-                    </Button>
-                  )}
-                </NavLink>
-              ))}
+                    </NavLink>
+                    <div className="border-b border-border/70 mt-1" />
+                  </div>
+                ))}
+              </div>
             </nav>
           </CardContent>
         </Card>
