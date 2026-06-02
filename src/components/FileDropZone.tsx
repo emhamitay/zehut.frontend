@@ -3,6 +3,13 @@ import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import clsx from 'clsx'
 
+// State machine for the file drop zone component. It can be in one of the following states:
+// - idle: waiting for user interaction
+// - dragging: user is dragging a file over the drop zone
+// - parsing: file is being parsed and sent to the server
+// - done: file was successfully processed, showing results
+// - error: an error occurred, showing error message
+
 type State =
   | { kind: 'idle' }
   | { kind: 'dragging' }
@@ -10,11 +17,16 @@ type State =
   | { kind: 'done'; fileName: string; count: number; label: string }
   | { kind: 'error'; message: string }
 
+// List of depencies for file Extensions
+
 const ACCEPTED = ['.xlsx', '.xls', '.docx']
 
 function accept(file: File): boolean {
   return ACCEPTED.some((ext) => file.name.toLowerCase().endsWith(ext))
 }
+
+// Parses the given file and returns a structured payload for the API.
+// This method executes when the user drops a file or selects one via the file input (fires by the handleFile method).
 
 async function parseFile(
   file: File
@@ -39,10 +51,15 @@ async function parseFile(
   throw new Error('סוג קובץ לא נתמך')
 }
 
+// Main Component
+
 export default function FileDropZone() {
   const [state, setState] = useState<State>({ kind: 'idle' })
   const inputRef = useRef<HTMLInputElement>(null)
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
 
+  //Handles the file processing workflow: validation, parsing, sending to API, and updating state based on results or errors.
+  //Executed when a file is dropped or selected via the file input.
   async function handleFile(file: File) {
     if (!accept(file)) {
       setState({
@@ -54,10 +71,12 @@ export default function FileDropZone() {
 
     setState({ kind: 'parsing' })
 
+    //Parse the file & send it to the api
     try {
-      const payload = await parseFile(file)
+      const payload = await parseFile(file);
+      console.log('Parsed payload:', payload) // Debug log to verify the parsed content
 
-      await fetch('http://localhost:4000/api/extract', {
+      await fetch(`${apiBaseUrl}/api/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -75,6 +94,7 @@ export default function FileDropZone() {
     }
   }
 
+  // Event handlers for drag-and-drop and file input interactions. They manage the component's state to reflect the current interaction phase (e.g., dragging, parsing, done, error).
   function onDragOver(e: React.DragEvent) {
     e.preventDefault()
     if (state.kind !== 'parsing') setState({ kind: 'dragging' })
@@ -98,6 +118,7 @@ export default function FileDropZone() {
 
   const isDragging = state.kind === 'dragging'
 
+  // The component's UI adapts based on the current state, providing visual feedback for each phase of the file upload and processing workflow. It uses Tailwind CSS for styling and clsx for conditional class names.
   return (
     <div
       role="button"
@@ -168,6 +189,8 @@ export default function FileDropZone() {
     </div>
   )
 }
+
+// -- Icons and Spinner components for visual feedback during different states of the file upload and processing workflow. They enhance the user experience by providing clear indicators of the current status (e.g., uploading, success, error).
 
 function UploadIcon({ className }: { className?: string }) {
   return (
