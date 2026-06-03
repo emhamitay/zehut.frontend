@@ -1,12 +1,12 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
-import AddPeople from './pages/AddPeople'
-import GetPeople from './pages/GetPeople'
 import Users from './pages/Users'
+import ContactSheets from './pages/ContactSheets';
+import AddCitizens from './pages/AddCitizens';
 
 const router = createBrowserRouter([
-  { path: '/', element: <Navigate to="/add-people" replace /> },
-  { path: '/add-people', element: <AddPeople /> },
-  { path: '/get-people', element: <GetPeople /> },
+  { path: '/', element: <Navigate to="/add-citizens" replace /> },
+  { path: '/add-citizens', element: <AddCitizens /> },
+  { path: '/contact-sheets', element: <ContactSheets /> },
   { path: '/users', element: <Users /> },
 ])
 

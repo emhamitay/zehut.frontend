@@ -16,8 +16,8 @@ type MenuItem = {
 }
 
 const menuItems: MenuItem[] = [
-  { label: 'הוסף אנשים', path: '/add-people' },
-  { label: 'קבל אנשים', path: '/get-people' },
+  { label: 'הוספת אזרחים', path: '/add-citizens' },
+  { label: 'דפי קשר', path: '/contact-sheets' },
   { label: 'משתמשים', path: '/users' },
 ]
 

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import clsx from 'clsx'
+import { SpinnerIcon, UploadIcon } from './icons'
 
 type Props = {
   onFile: (file: File) => void
@@ -92,7 +93,7 @@ export default function FileDropZone({
 
       {busy ? (
         <>
-          <Spinner />
+          <SpinnerIcon className="h-8 w-8 animate-spin text-sky-400" />
           <p className="text-sm font-medium text-slate-500">{busyLabel}</p>
         </>
       ) : (
@@ -119,47 +120,5 @@ export default function FileDropZone({
         <p className="px-4 text-sm font-medium text-red-500">{shownError}</p>
       )}
     </div>
-  )
-}
-
-function UploadIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-      />
-    </svg>
-  )
-}
-
-function Spinner() {
-  return (
-    <svg
-      className="h-8 w-8 animate-spin text-sky-400"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"
-      />
-    </svg>
   )
 }

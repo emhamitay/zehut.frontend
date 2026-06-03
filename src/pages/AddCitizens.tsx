@@ -1,9 +1,9 @@
 import AppLayout from '../components/layout/AppLayout'
 import UploadFlow from '../components/UploadFlow'
 
-export default function AddPeople() {
+export default function AddCitizens() {
   return (
-    <AppLayout title="הוסף אנשים">
+    <AppLayout title="הוספת אזרחים">
       <UploadFlow />
     </AppLayout>
   )
