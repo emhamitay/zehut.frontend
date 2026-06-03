@@ -9,6 +9,8 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { useAuth } from '../../auth/AuthContext'
+import { Button } from '@/components/ui/button'
 
 type MenuItem = {
   label: string
@@ -27,6 +29,7 @@ type AppLayoutProps = {
 }
 
 export default function AppLayout({ title, children }: AppLayoutProps) {
+  const { user, logout } = useAuth()
   return (
     <div
       className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fafc_0%,#f0f9ff_45%,#f8fafc_100%)] px-4 py-8 text-right sm:px-8"
@@ -62,6 +65,21 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                 ))}
               </div>
             </nav>
+            {user && (
+              <div className="mt-6 space-y-2 border-t border-border/70 pt-4 text-sm">
+                <div className="text-slate-600">
+                  מחובר/ת כ־<span className="font-medium">{user.username}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={logout}
+                  className="w-full"
+                >
+                  התנתק
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
