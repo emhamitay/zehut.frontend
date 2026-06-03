@@ -1,19 +1,30 @@
 import { Link } from 'react-router-dom'
 import { Button } from './ui/button'
+import type { Alert, AlertKind } from '@/lib/api'
 
 type Props = {
   fileName: string
-  added: number
-  merged: number
-  skipped: number
+  inserted: number
+  ignored: number
+  phoneAdded: number
+  alerts: Alert[]
   onUploadAnother: () => void
+}
+
+const ALERT_LABELS: Record<AlertKind, string> = {
+  name_mismatch_on_id: 'שם שונה לאותה תעודת זהות',
+  name_phone_mismatch_on_id: 'שם וטלפון שונים לאותה תעודת זהות',
+  id_mismatch_name_phone_match: 'תעודת זהות שונה לאותו שם וטלפון',
+  id_name_mismatch_on_phone: 'תעודת זהות ושם שונים לאותו טלפון',
+  cross_person_mismatch: 'טלפון משויך כעת לאדם אחר',
 }
 
 export default function UploadSummary({
   fileName,
-  added,
-  merged,
-  skipped,
+  inserted,
+  ignored,
+  phoneAdded,
+  alerts,
   onUploadAnother,
 }: Props) {
   return (
@@ -27,11 +38,41 @@ export default function UploadSummary({
         <p className="text-xs text-slate-400">הקובץ הועלה בהצלחה</p>
       </div>
 
-      <div className="grid w-full max-w-md grid-cols-3 gap-3">
-        <Stat label="נוספו" value={added} tone="sky" />
-        <Stat label="מוזגו" value={merged} tone="emerald" />
-        <Stat label="דולגו" value={skipped} tone="slate" />
+      <div className="grid w-full max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="נוספו" value={inserted} tone="sky" />
+        <Stat label="כבר קיימים" value={ignored} tone="slate" />
+        <Stat label="טלפונים נוספו" value={phoneAdded} tone="emerald" />
+        <Stat label="התראות" value={alerts.length} tone="amber" />
       </div>
+
+      {alerts.length > 0 && (
+        <div className="w-full max-w-2xl text-right">
+          <div className="mb-2 text-xs font-medium text-slate-500">
+            התראות שדורשות בדיקה ידנית:
+          </div>
+          <ul className="space-y-1.5">
+            {alerts.map((a) => (
+              <li
+                key={a.id}
+                className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-slate-700"
+              >
+                <div className="font-medium text-amber-800">
+                  {ALERT_LABELS[a.kind]}
+                </div>
+                <div className="mt-0.5 text-slate-500">
+                  {[
+                    a.details.incoming.fullname,
+                    a.details.incoming.id,
+                    a.details.incoming.phone.join(', '),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Button onClick={onUploadAnother}>העלאת קובץ נוסף</Button>
@@ -50,14 +91,16 @@ function Stat({
 }: {
   label: string
   value: number
-  tone: 'sky' | 'emerald' | 'slate'
+  tone: 'sky' | 'emerald' | 'slate' | 'amber'
 }) {
   const toneClass =
     tone === 'sky'
       ? 'text-sky-600'
       : tone === 'emerald'
         ? 'text-emerald-600'
-        : 'text-slate-500'
+        : tone === 'amber'
+          ? 'text-amber-600'
+          : 'text-slate-500'
   return (
     <div className="rounded-lg border border-border/60 bg-background px-3 py-4">
       <div className={`text-2xl font-semibold ${toneClass}`}>{value}</div>

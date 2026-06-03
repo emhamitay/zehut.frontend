@@ -14,20 +14,34 @@ export type PersonWithPhones = {
   phones: string[]
 }
 
-export type CommitResult = {
-  inserted: PersonWithPhones[]
-  merged: { person: PersonWithPhones; mergedFrom: Contact }[]
-  conflicts: {
+export type AlertKind =
+  | 'name_mismatch_on_id'
+  | 'name_phone_mismatch_on_id'
+  | 'id_mismatch_name_phone_match'
+  | 'id_name_mismatch_on_phone'
+  | 'cross_person_mismatch'
+
+export type Alert = {
+  id: string
+  kind: AlertKind
+  personId: string
+  relatedPersonId: string | null
+  details: {
+    matchedOn: 'id' | 'name' | 'phone'
+    mismatchedFields: ('id' | 'name' | 'phone')[]
     incoming: Contact
-    matchedOn: 'phone'
-    candidates: PersonWithPhones[]
-  }[]
+  }
+  sourceFile: string | null
+  resolvedAt: string | null
+  createdAt: string
 }
 
-export type ResolveAction =
-  | { action: 'merge'; targetPersonId: string; incoming: Contact }
-  | { action: 'new'; incoming: Contact; sourceFile?: string | null }
-  | { action: 'skip' }
+export type CommitResult = {
+  inserted: PersonWithPhones[]
+  ignored: number
+  phoneAdded: { person: PersonWithPhones; addedPhones: string[] }[]
+  alerts: Alert[]
+}
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
@@ -38,7 +52,7 @@ function apiUrl(path: string): string {
 export async function extractContacts(
   payload:
     | { type: 'excel'; rows: Record<string, unknown>[] }
-    | { type: 'docx'; text: string }
+    | { type: 'docx'; text: string },
 ): Promise<Contact[]> {
   const res = await fetch(apiUrl('/api/extract'), {
     method: 'POST',
@@ -51,7 +65,7 @@ export async function extractContacts(
 
 export async function commitContacts(
   contacts: Contact[],
-  sourceFile: string | null
+  sourceFile: string | null,
 ): Promise<CommitResult> {
   const res = await fetch(apiUrl('/api/persons/commit'), {
     method: 'POST',
@@ -59,17 +73,5 @@ export async function commitContacts(
     body: JSON.stringify({ contacts, sourceFile }),
   })
   if (!res.ok) throw new Error('commit_failed')
-  return res.json()
-}
-
-export async function resolveConflict(
-  action: ResolveAction
-): Promise<{ person: PersonWithPhones | null }> {
-  const res = await fetch(apiUrl('/api/persons/resolve'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(action),
-  })
-  if (!res.ok) throw new Error('resolve_failed')
   return res.json()
 }

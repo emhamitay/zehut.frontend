@@ -2,13 +2,11 @@ import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import FileDropZone from './FileDropZone'
-import ConflictResolver from './ConflictResolver'
 import UploadSummary from './UploadSummary'
 import {
   commitContacts,
   extractContacts,
-  type CommitResult,
-  type PersonWithPhones,
+  type Alert,
 } from '@/lib/api'
 
 type Phase =
@@ -17,18 +15,12 @@ type Phase =
   | { kind: 'extracting'; fileName: string }
   | { kind: 'committing'; fileName: string }
   | {
-      kind: 'conflicts'
-      fileName: string
-      remaining: CommitResult['conflicts']
-      addedFromConflicts: PersonWithPhones[]
-      initial: CommitResult
-    }
-  | {
       kind: 'summary'
       fileName: string
-      added: number
-      merged: number
-      skipped: number
+      inserted: number
+      ignored: number
+      phoneAdded: number
+      alerts: Alert[]
     }
 
 async function parseFile(file: File) {
@@ -62,23 +54,14 @@ export default function UploadFlow() {
       const contacts = await extractContacts(payload)
       setPhase({ kind: 'committing', fileName: file.name })
       const result = await commitContacts(contacts, file.name)
-      if (result.conflicts.length === 0) {
-        setPhase({
-          kind: 'summary',
-          fileName: file.name,
-          added: result.inserted.length,
-          merged: result.merged.length,
-          skipped: 0,
-        })
-      } else {
-        setPhase({
-          kind: 'conflicts',
-          fileName: file.name,
-          remaining: result.conflicts,
-          addedFromConflicts: [],
-          initial: result,
-        })
-      }
+      setPhase({
+        kind: 'summary',
+        fileName: file.name,
+        inserted: result.inserted.length,
+        ignored: result.ignored,
+        phoneAdded: result.phoneAdded.length,
+        alerts: result.alerts,
+      })
     } catch (e) {
       setError((e as Error).message || 'אירעה שגיאה בעיבוד הקובץ')
       setPhase({ kind: 'idle' })
@@ -90,32 +73,14 @@ export default function UploadFlow() {
     setPhase({ kind: 'idle' })
   }
 
-  if (phase.kind === 'conflicts') {
-    return (
-      <ConflictResolver
-        conflicts={phase.remaining}
-        fileName={phase.fileName}
-        onDone={(stats) => {
-          const initial = phase.initial
-          setPhase({
-            kind: 'summary',
-            fileName: phase.fileName,
-            added: initial.inserted.length + stats.newCount,
-            merged: initial.merged.length + stats.mergeCount,
-            skipped: stats.skipCount,
-          })
-        }}
-      />
-    )
-  }
-
   if (phase.kind === 'summary') {
     return (
       <UploadSummary
         fileName={phase.fileName}
-        added={phase.added}
-        merged={phase.merged}
-        skipped={phase.skipped}
+        inserted={phase.inserted}
+        ignored={phase.ignored}
+        phoneAdded={phase.phoneAdded}
+        alerts={phase.alerts}
         onUploadAnother={reset}
       />
     )
