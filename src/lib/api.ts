@@ -135,6 +135,21 @@ export async function login(
   return res.json()
 }
 
+export async function setupFirstUser(
+  username: string,
+  password: string,
+): Promise<{ token: string; user: AuthUser }> {
+  const res = await apiFetch('/api/auth/setup', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(data.error ?? 'setup_failed')
+  }
+  return res.json()
+}
+
 export async function fetchMe(): Promise<AuthUser | null> {
   const res = await apiFetch('/api/auth/me')
   if (res.status === 401) return null

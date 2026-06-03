@@ -11,6 +11,7 @@ import {
   fetchMe,
   fetchSetupRequired,
   login as apiLogin,
+  setupFirstUser as apiSetup,
   setToken,
   type AuthUser,
 } from '../lib/api'
@@ -20,6 +21,7 @@ type AuthContextValue = {
   loading: boolean
   setupRequired: boolean
   login: (username: string, password: string) => Promise<void>
+  setupFirstUser: (username: string, password: string) => Promise<void>
   logout: () => void
   refresh: () => Promise<void>
 }
@@ -58,6 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSetupRequired(false)
   }, [])
 
+  const setupFirstUser = useCallback(
+    async (username: string, password: string) => {
+      const { token, user: u } = await apiSetup(username, password)
+      setToken(token)
+      setUser(u)
+      setSetupRequired(false)
+    },
+    [],
+  )
+
   const logout = useCallback(() => {
     clearToken()
     setUser(null)
@@ -65,7 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, setupRequired, login, logout, refresh }}
+      value={{
+        user,
+        loading,
+        setupRequired,
+        login,
+        setupFirstUser,
+        logout,
+        refresh,
+      }}
     >
       {children}
     </AuthContext.Provider>
