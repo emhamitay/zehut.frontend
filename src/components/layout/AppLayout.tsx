@@ -36,7 +36,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
       dir="rtl"
     >
       <div className="grid w-full gap-6 lg:grid-cols-[280px_1fr]">
-        <Card className="bg-card/90 shadow-md backdrop-blur">
+        <Card className="bg-card/90 shadow-md backdrop-blur print:hidden">
           <CardHeader>
             <CardDescription>בס"ד עמ"ה עש"ו</CardDescription>
             <CardTitle className="text-2xl font-bold tracking-tight text-sky-200">זהות יהודית</CardTitle>

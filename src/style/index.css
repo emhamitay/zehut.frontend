@@ -1,2 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap');
 @import "tailwindcss";
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  body,
+  html {
+    background: white !important;
+  }
+
+  /* collapse the sidebar so main content fills the page */
+  .lg\:grid-cols-\[280px_1fr\] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* strip card chrome */
+  .shadow-md {
+    box-shadow: none !important;
+  }
+  .backdrop-blur {
+    backdrop-filter: none !important;
+  }
+}
