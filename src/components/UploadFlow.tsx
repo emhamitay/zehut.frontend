@@ -7,6 +7,7 @@ import {
   commitContacts,
   extractContacts,
   type Alert,
+  type PersonWithPhones,
 } from '@/lib/api'
 
 type Phase =
@@ -17,9 +18,9 @@ type Phase =
   | {
       kind: 'summary'
       fileName: string
-      inserted: number
+      inserted: PersonWithPhones[]
       ignored: number
-      phoneAdded: number
+      phoneAdded: { person: PersonWithPhones; addedPhones: string[] }[]
       alerts: Alert[]
     }
 
@@ -57,9 +58,9 @@ export default function UploadFlow() {
       setPhase({
         kind: 'summary',
         fileName: file.name,
-        inserted: result.inserted.length,
+        inserted: result.inserted,
         ignored: result.ignored,
-        phoneAdded: result.phoneAdded.length,
+        phoneAdded: result.phoneAdded,
         alerts: result.alerts,
       })
     } catch (e) {

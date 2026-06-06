@@ -20,6 +20,10 @@ export type AlertKind =
   | 'id_mismatch_name_phone_match'
   | 'id_name_mismatch_on_phone'
   | 'cross_person_mismatch'
+  | 'name_match_no_id'
+  | 'phone_match_name_differs_no_id'
+
+export type MismatchedField = 'id' | 'name' | 'phone'
 
 export type Alert = {
   id: string
@@ -28,11 +32,12 @@ export type Alert = {
   relatedPersonId: string | null
   details: {
     matchedOn: 'id' | 'name' | 'phone'
-    mismatchedFields: ('id' | 'name' | 'phone')[]
+    mismatchedFields: MismatchedField[]
     incoming: Contact
   }
   sourceFile: string | null
   resolvedAt: string | null
+  resolvedByUserId: string | null
   createdAt: string
 }
 
@@ -242,4 +247,147 @@ export async function getContactPage(id: string): Promise<ContactPage> {
   const res = await apiFetch(`/api/contact-pages/${id}`)
   if (!res.ok) throw new Error('get_contact_page_failed')
   return res.json()
+}
+
+// ─── Citizens: search, detail, update, history, merge ────────────────────────
+
+export type SearchBy = 'auto' | 'id' | 'phone' | 'name'
+
+export type SearchHit = {
+  person: PersonWithPhones
+  openAlertCount: number
+}
+
+export type SearchResult = {
+  resolvedBy: Exclude<SearchBy, 'auto'>
+  hits: SearchHit[]
+}
+
+export type ConflictDetail = {
+  kind: AlertKind
+  otherPerson: {
+    id: string
+    nationalId: string | null
+    fullname: string | null
+    phones: string[]
+  }
+  mismatchedFields: MismatchedField[]
+}
+
+export type UpdatePersonInput = {
+  nationalId?: string | null
+  fullname?: string | null
+  phones?: { add?: string[]; remove?: string[] }
+  reason?: string | null
+}
+
+export type PersonAuditField =
+  | 'nationalId'
+  | 'fullname'
+  | 'phone_added'
+  | 'phone_removed'
+  | 'merged_from'
+
+export type PersonAuditRow = {
+  id: string
+  personId: string
+  userId: string
+  field: PersonAuditField
+  oldValue: string | null
+  newValue: string | null
+  reason: string | null
+  createdAt: string
+}
+
+export type PersonHistoryEntry = {
+  id: string
+  field: PersonAuditField
+  oldValue: string | null
+  newValue: string | null
+  reason: string | null
+  createdAt: string
+  user: { id: string; username: string } | null
+}
+
+export type UpdatePersonResult =
+  | {
+      ok: true
+      person: PersonWithPhones
+      audit: PersonAuditRow[]
+      resolvedAlerts: Alert[]
+    }
+  | { ok: false; conflicts: ConflictDetail[] }
+  | { ok: false; notFound: true }
+
+export type MergePersonsInput = {
+  survivorId: string
+  victimId: string
+  resolved: {
+    nationalId: string | null
+    fullname: string | null
+  }
+  phonesToKeep: string[]
+  reason: string
+  confirmDifferentIds: boolean
+}
+
+export type MergePersonsResult =
+  | { ok: true; person: PersonWithPhones; audit: PersonAuditRow[] }
+  | {
+      ok: false
+      error: 'not_found' | 'confirm_required' | 'missing_reason' | 'same_person'
+      reason?: string
+    }
+
+export async function searchPersons(
+  query: string,
+  by: SearchBy,
+  myPagesOnly: boolean,
+): Promise<SearchResult> {
+  const params = new URLSearchParams({ q: query, by, myPagesOnly: String(myPagesOnly) })
+  const res = await apiFetch(`/api/persons/search?${params.toString()}`)
+  if (!res.ok) throw new Error('search_failed')
+  return res.json()
+}
+
+export async function getPerson(
+  id: string,
+): Promise<{ person: PersonWithPhones; openAlerts: Alert[] } | null> {
+  const res = await apiFetch(`/api/persons/${id}`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error('get_person_failed')
+  return res.json()
+}
+
+export async function getPersonHistory(id: string): Promise<PersonHistoryEntry[]> {
+  const res = await apiFetch(`/api/persons/${id}/history`)
+  if (!res.ok) throw new Error('get_person_history_failed')
+  return res.json()
+}
+
+export async function updatePerson(
+  id: string,
+  input: UpdatePersonInput,
+): Promise<UpdatePersonResult> {
+  const res = await apiFetch(`/api/persons/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+  if (res.status === 404) return { ok: false, notFound: true }
+  if (res.status === 409) return (await res.json()) as UpdatePersonResult
+  if (!res.ok) throw new Error('update_person_failed')
+  return (await res.json()) as UpdatePersonResult
+}
+
+export async function mergePersons(
+  input: MergePersonsInput,
+): Promise<MergePersonsResult> {
+  const res = await apiFetch('/api/persons/merge', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  if (res.status === 404) return { ok: false, error: 'not_found' }
+  if (res.status === 409) return (await res.json()) as MergePersonsResult
+  if (!res.ok) throw new Error('merge_failed')
+  return (await res.json()) as MergePersonsResult
 }

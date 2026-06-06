@@ -19,6 +19,7 @@ type MenuItem = {
 
 const menuItems: MenuItem[] = [
   { label: 'הוספת אזרחים', path: '/add-citizens' },
+  { label: 'עדכון אזרחים', path: '/citizens' },
   { label: 'דפי קשר', path: '/contact-sheets' },
   { label: 'משתמשים', path: '/users' },
 ]

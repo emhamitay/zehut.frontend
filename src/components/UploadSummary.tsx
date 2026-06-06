@@ -1,22 +1,16 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from './ui/button'
-import type { Alert, AlertKind } from '@/lib/api'
+import type { Alert, PersonWithPhones } from '@/lib/api'
+import { ALERT_LABELS } from '@/lib/alert-labels'
 
 type Props = {
   fileName: string
-  inserted: number
+  inserted: PersonWithPhones[]
   ignored: number
-  phoneAdded: number
+  phoneAdded: { person: PersonWithPhones; addedPhones: string[] }[]
   alerts: Alert[]
   onUploadAnother: () => void
-}
-
-const ALERT_LABELS: Record<AlertKind, string> = {
-  name_mismatch_on_id: 'שם שונה לאותה תעודת זהות',
-  name_phone_mismatch_on_id: 'שם וטלפון שונים לאותה תעודת זהות',
-  id_mismatch_name_phone_match: 'תעודת זהות שונה לאותו שם וטלפון',
-  id_name_mismatch_on_phone: 'תעודת זהות ושם שונים לאותו טלפון',
-  cross_person_mismatch: 'טלפון משויך כעת לאדם אחר',
 }
 
 export default function UploadSummary({
@@ -27,6 +21,30 @@ export default function UploadSummary({
   alerts,
   onUploadAnother,
 }: Props) {
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+
+  // Group alerts by personId
+  const personMap = new Map<string, typeof alerts>()
+  for (const alert of alerts) {
+    if (!personMap.has(alert.personId)) {
+      personMap.set(alert.personId, [])
+    }
+    personMap.get(alert.personId)!.push(alert)
+  }
+
+  // Lookup persons by ID from inserted and phoneAdded
+  const personById = new Map<string, PersonWithPhones>()
+  for (const p of inserted) {
+    personById.set(p.id, p)
+  }
+  for (const { person } of phoneAdded) {
+    personById.set(person.id, person)
+  }
+
+  const visibleGroups = Array.from(personMap.entries()).filter(
+    ([id]) => !dismissed.has(id),
+  )
+
   return (
     <div className="flex flex-col items-center gap-6 rounded-xl border border-border/70 bg-muted/20 p-8 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-100">
@@ -39,37 +57,68 @@ export default function UploadSummary({
       </div>
 
       <div className="grid w-full max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="נוספו" value={inserted} tone="sky" />
+        <Stat label="נוספו" value={inserted.length} tone="sky" />
         <Stat label="כבר קיימים" value={ignored} tone="slate" />
-        <Stat label="טלפונים נוספו" value={phoneAdded} tone="emerald" />
+        <Stat label="טלפונים נוספו" value={phoneAdded.length} tone="emerald" />
         <Stat label="התראות" value={alerts.length} tone="amber" />
       </div>
 
-      {alerts.length > 0 && (
+      {visibleGroups.length > 0 && (
         <div className="w-full max-w-2xl text-right">
           <div className="mb-2 text-xs font-medium text-slate-500">
-            התראות שדורשות בדיקה ידנית:
+            אזרחים שצריכים בדיקה ידנית ({visibleGroups.length}):
           </div>
-          <ul className="space-y-1.5">
-            {alerts.map((a) => (
-              <li
-                key={a.id}
-                className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-slate-700"
-              >
-                <div className="font-medium text-amber-800">
-                  {ALERT_LABELS[a.kind]}
-                </div>
-                <div className="mt-0.5 text-slate-500">
-                  {[
-                    a.details.incoming.fullname,
-                    a.details.incoming.id,
-                    a.details.incoming.phone.join(', '),
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </div>
-              </li>
-            ))}
+          <ul className="space-y-2">
+            {visibleGroups.map(([personId, groupAlerts]) => {
+              const person = personById.get(personId)
+              return (
+                <li
+                  key={personId}
+                  className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 text-right">
+                      <div className="font-medium text-amber-800">
+                        {person?.fullname || '—'}
+                      </div>
+                      <div className="mt-0.5 text-slate-600">
+                        {[
+                          person?.nationalId
+                            ? `ת"ז: ${person.nationalId}`
+                            : null,
+                          person?.phones.length
+                            ? `טלפון: ${person.phones.join(', ')}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || '—'}
+                      </div>
+                      <div className="mt-1 space-y-0.5">
+                        {groupAlerts.map((a) => (
+                          <div key={a.id} className="text-slate-700">
+                            • {ALERT_LABELS[a.kind]}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Button variant="outline" size="xs" asChild>
+                        <Link to={`/citizens/${personId}`}>ערוך</Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => {
+                          setDismissed((s) => new Set([...s, personId]))
+                        }}
+                      >
+                        השאר כך
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
@@ -77,7 +126,7 @@ export default function UploadSummary({
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Button onClick={onUploadAnother}>העלאת קובץ נוסף</Button>
         <Button variant="outline" asChild>
-          <Link to="/get-people">צפייה באנשי הקשר</Link>
+          <Link to="/contact-sheets">צפייה בדפי קשר</Link>
         </Button>
       </div>
     </div>
