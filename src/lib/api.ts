@@ -185,3 +185,61 @@ export async function deleteUser(id: string): Promise<void> {
     throw new Error(data.error ?? 'delete_user_failed')
   }
 }
+
+// ─── Contact Pages (דפי קשר) ─────────────────────────────────────────────────
+
+export type CrossPageWarning = {
+  otherPersonId: string
+  otherNationalId: string | null
+  otherFullname: string | null
+  otherPageId: string
+  otherPageNumber: number
+  otherCreatedByUsername: string
+  alertKind: string
+}
+
+export type ContactPageEntry = {
+  personId: string
+  nationalId: string | null
+  fullname: string | null
+  phones: string[]
+  pairGroupId: string | null
+  crossPageWarnings: CrossPageWarning[]
+}
+
+export type ContactPage = {
+  id: string
+  season: string
+  pageNumber: number
+  createdByUserId: string
+  createdAt: string
+  entries: ContactPageEntry[]
+}
+
+export type ContactPageSummary = {
+  id: string
+  season: string
+  pageNumber: number
+  createdAt: string
+}
+
+export async function generateContactPage(): Promise<ContactPage> {
+  const res = await apiFetch('/api/contact-pages', { method: 'POST' })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string }
+    throw new Error(data.message ?? data.error ?? 'generate_failed')
+  }
+  return res.json()
+}
+
+export async function listContactPages(): Promise<ContactPageSummary[]> {
+  const res = await apiFetch('/api/contact-pages')
+  if (!res.ok) throw new Error('list_contact_pages_failed')
+  return res.json()
+}
+
+export async function getContactPage(id: string): Promise<ContactPage> {
+  const res = await apiFetch(`/api/contact-pages/${id}`)
+  if (!res.ok) throw new Error('get_contact_page_failed')
+  return res.json()
+}
