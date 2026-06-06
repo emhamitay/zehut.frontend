@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import FileDropZone from './FileDropZone'
@@ -24,6 +24,19 @@ type Phase =
       alerts: Alert[]
     }
 
+const EXTRACTING_MESSAGES = [
+  'בעה"י עובדים על זה עכשיו...',
+  'בעזרת השם, עוד רגע וזה מוכן...',
+  'בעה"י אנחנו מסדרים את הכל כמו שצריך...',
+  'בס"ד, המערכת חושבת ומעדכנת...',
+  'בעזרת השם, תכף נסיים בשבילך...',
+  'בעה"י זה מתקדם יפה ממש עכשיו...',
+  'בסייעתא דשמיא, עוד טיפונת סבלנות...',
+  'בעזרת השם, מיד תראה תוצאה...',
+  'בעה"י הכל בבדיקה אחרונה...',
+  'בס"ד, אנחנו כבר בשלבים האחרונים...',
+]
+
 async function parseFile(file: File) {
   const ext = file.name.split('.').pop()?.toLowerCase()
   if (ext === 'xlsx' || ext === 'xls') {
@@ -45,6 +58,20 @@ async function parseFile(file: File) {
 export default function UploadFlow() {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
   const [error, setError] = useState<string | null>(null)
+  const [extractingMessageIndex, setExtractingMessageIndex] = useState(0)
+
+  useEffect(() => {
+    if (phase.kind !== 'extracting') {
+      setExtractingMessageIndex(0)
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      setExtractingMessageIndex((prev) => (prev + 1) % EXTRACTING_MESSAGES.length)
+    }, 10000)
+
+    return () => window.clearInterval(intervalId)
+  }, [phase.kind])
 
   async function handleFile(file: File) {
     setError(null)
@@ -91,7 +118,7 @@ export default function UploadFlow() {
     phase.kind === 'parsing'
       ? 'מעבד קובץ...'
       : phase.kind === 'extracting'
-        ? 'מחלץ אנשי קשר...'
+        ? EXTRACTING_MESSAGES[extractingMessageIndex]
         : phase.kind === 'committing'
           ? 'שומר לבסיס הנתונים...'
           : undefined
