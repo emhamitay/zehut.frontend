@@ -84,7 +84,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
         </Card>
 
         <Card className="bg-card/90 shadow-md backdrop-blur">
-          <CardHeader>
+          <CardHeader className="print:hidden">
             <CardTitle className="text-2xl sm:text-3xl">{title}</CardTitle>
           </CardHeader>
           <CardContent>
