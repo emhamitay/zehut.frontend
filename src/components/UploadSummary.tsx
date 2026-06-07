@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from './ui/button'
+import MergeConfirmation from './MergeConfirmation'
 import type { Alert, PersonWithPhones } from '@/lib/api'
 import { ALERT_LABELS } from '@/lib/alert-labels'
 
@@ -22,8 +23,10 @@ export default function UploadSummary({
   onUploadAnother,
 }: Props) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [mergeOpen, setMergeOpen] = useState<Record<string, boolean>>({})
+  const [reasonsByPerson, setReasonsByPerson] = useState<Record<string, string>>({})
+  const [mergedNotice, setMergedNotice] = useState<Record<string, string>>({})
 
-  // Group alerts by personId
   const personMap = new Map<string, typeof alerts>()
   for (const alert of alerts) {
     if (!personMap.has(alert.personId)) {
@@ -32,14 +35,9 @@ export default function UploadSummary({
     personMap.get(alert.personId)!.push(alert)
   }
 
-  // Lookup persons by ID from inserted and phoneAdded
   const personById = new Map<string, PersonWithPhones>()
-  for (const p of inserted) {
-    personById.set(p.id, p)
-  }
-  for (const { person } of phoneAdded) {
-    personById.set(person.id, person)
-  }
+  for (const p of inserted) personById.set(p.id, p)
+  for (const { person } of phoneAdded) personById.set(person.id, person)
 
   const visibleGroups = Array.from(personMap.entries()).filter(
     ([id]) => !dismissed.has(id),
@@ -71,21 +69,26 @@ export default function UploadSummary({
           <ul className="space-y-2">
             {visibleGroups.map(([personId, groupAlerts]) => {
               const person = personById.get(personId)
+              const alertWithRelated = groupAlerts.find(
+                (a) => a.relatedPerson != null,
+              )
+              const relatedPerson = alertWithRelated?.relatedPerson ?? null
+              const isMergeOpen = mergeOpen[personId] === true
+              const reason = reasonsByPerson[personId] ?? ''
+              const successNotice = mergedNotice[personId]
               return (
                 <li
                   key={personId}
-                  className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs"
+                  className="space-y-2 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-right"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 text-right">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
                       <div className="font-medium text-amber-800">
                         {person?.fullname || '—'}
                       </div>
                       <div className="mt-0.5 text-slate-600">
                         {[
-                          person?.nationalId
-                            ? `ת"ז: ${person.nationalId}`
-                            : null,
+                          person?.nationalId ? `ת"ז: ${person.nationalId}` : null,
                           person?.phones.length
                             ? `טלפון: ${person.phones.join(', ')}`
                             : null,
@@ -100,22 +103,95 @@ export default function UploadSummary({
                           </div>
                         ))}
                       </div>
+                      {relatedPerson && (
+                        <div className="mt-2 rounded-md border border-amber-200/70 bg-white/70 p-2">
+                          <div className="text-[11px] text-slate-500">
+                            מתנגש עם אזרח קיים:
+                          </div>
+                          <div className="font-medium text-slate-900">
+                            {relatedPerson.fullname || '—'}
+                          </div>
+                          <div className="text-[11px] text-slate-600">
+                            {[
+                              relatedPerson.nationalId
+                                ? `ת"ז: ${relatedPerson.nationalId}`
+                                : null,
+                              relatedPerson.phones.length
+                                ? `טלפון: ${relatedPerson.phones.join(', ')}`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ') || '—'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1">
                       <Button variant="outline" size="xs" asChild>
                         <Link to={`/citizens/${personId}`}>ערוך</Link>
                       </Button>
+                      {relatedPerson && person && !isMergeOpen && (
+                        <Button
+                          variant="default"
+                          size="xs"
+                          onClick={() =>
+                            setMergeOpen((s) => ({ ...s, [personId]: true }))
+                          }
+                        >
+                          מזג
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="xs"
-                        onClick={() => {
+                        onClick={() =>
                           setDismissed((s) => new Set([...s, personId]))
-                        }}
+                        }
                       >
                         השאר כך
                       </Button>
                     </div>
                   </div>
+
+                  {successNotice && (
+                    <div className="rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-1 text-[11px] text-emerald-800">
+                      {successNotice}
+                    </div>
+                  )}
+
+                  {isMergeOpen && person && relatedPerson && alertWithRelated && (
+                    <MergeConfirmation
+                      survivor={person}
+                      candidate={{
+                        nationalId: person.nationalId,
+                        fullname: person.fullname,
+                        phones: person.phones,
+                      }}
+                      others={[
+                        {
+                          other: relatedPerson,
+                          kind: alertWithRelated.kind,
+                          mismatchedFields:
+                            alertWithRelated.details.mismatchedFields,
+                        },
+                      ]}
+                      reason={reason}
+                      onReasonChange={(r) =>
+                        setReasonsByPerson((s) => ({ ...s, [personId]: r }))
+                      }
+                      onMerged={() => {
+                        setMergeOpen((s) => ({ ...s, [personId]: false }))
+                        setMergedNotice((s) => ({
+                          ...s,
+                          [personId]: 'המיזוג בוצע בהצלחה',
+                        }))
+                        setDismissed((s) => new Set([...s, personId]))
+                      }}
+                      onCancel={() =>
+                        setMergeOpen((s) => ({ ...s, [personId]: false }))
+                      }
+                    />
+                  )}
                 </li>
               )
             })}

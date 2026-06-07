@@ -25,6 +25,7 @@ export default function CitizensMerge() {
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingSubmit, setPendingSubmit] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -307,24 +308,54 @@ export default function CitizensMerge() {
             </div>
           )}
 
+          {pendingSubmit && (
+            <div className="space-y-3 rounded-md border-2 border-sky-300 bg-sky-50/70 p-4 text-sky-900">
+              <div className="text-sm font-semibold">
+                פעולה זו אינה הפיכה — האזרח השני יימחק והפרטים יישמרו תחת השורד
+              </div>
+              <div className="text-xs leading-relaxed text-sky-800/90">
+                לפני שתאשר, ודא שהפרטים שהוגדרו למעלה הם הנכונים. אם משהו נראה
+                לא נכון, לחץ "ביטול" וערוך לפני אישור סופי.
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={busy}
+                >
+                  {busy ? 'מיזוג...' : 'אשר מיזוג'}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setPendingSubmit(false)}
+                  disabled={busy}
+                >
+                  ביטול
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" asChild disabled={busy}>
-              <Link to="/citizens">ביטול</Link>
+              <Link to="/citizens">חזרה</Link>
             </Button>
-            <Button
-              type="submit"
-              disabled={
-                busy ||
-                !reason.trim() ||
-                (differentIds && !confirmDifferentIds) ||
-                phonesToKeep.length === 0
-              }
-              onClick={() => {
-                if (!confirm('פעולה זו אינה הפיכה. להמשיך?')) return
-              }}
-            >
-              {busy ? 'מיזוג...' : 'מיזוג'}
-            </Button>
+            {!pendingSubmit && (
+              <Button
+                type="button"
+                disabled={
+                  busy ||
+                  !reason.trim() ||
+                  (differentIds && !confirmDifferentIds) ||
+                  phonesToKeep.length === 0
+                }
+                onClick={() => setPendingSubmit(true)}
+              >
+                מיזוג
+              </Button>
+            )}
           </div>
         </form>
       </div>
