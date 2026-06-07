@@ -39,6 +39,7 @@ export type Alert = {
   resolvedAt: string | null
   resolvedByUserId: string | null
   createdAt: string
+  relatedPerson: PersonWithPhones | null
 }
 
 export type CommitResult = {
@@ -287,6 +288,7 @@ export type PersonAuditField =
   | 'phone_added'
   | 'phone_removed'
   | 'merged_from'
+  | 'deleted'
 
 export type PersonAuditRow = {
   id: string
@@ -390,4 +392,22 @@ export async function mergePersons(
   if (res.status === 409) return (await res.json()) as MergePersonsResult
   if (!res.ok) throw new Error('merge_failed')
   return (await res.json()) as MergePersonsResult
+}
+
+export type DeletePersonResult =
+  | { ok: true; audit: PersonAuditRow[] }
+  | { ok: false; error: 'not_found' | 'missing_reason' }
+
+export async function deletePerson(
+  id: string,
+  reason: string,
+): Promise<DeletePersonResult> {
+  const res = await apiFetch(`/api/persons/${id}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  })
+  if (res.status === 404) return { ok: false, error: 'not_found' }
+  if (res.status === 400) return (await res.json()) as DeletePersonResult
+  if (!res.ok) throw new Error('delete_person_failed')
+  return (await res.json()) as DeletePersonResult
 }
