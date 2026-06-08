@@ -4,11 +4,13 @@ import {
   generateContactPage,
   getContactPage,
   listContactPages,
+  type AlertKind,
   type ContactPage,
   type ContactPageEntry,
   type ContactPageSummary,
   type CrossPageWarning,
 } from '../lib/api'
+import { ALERT_LABELS } from '../lib/alert-labels'
 import { Button } from '@/components/ui/button'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -55,14 +57,16 @@ function groupEntries(entries: ContactPageEntry[]): EntryGroup[] {
 // ─── table sub-components ────────────────────────────────────────────────────
 
 function WarningNote({ w }: { w: CrossPageWarning }) {
+  const reason = ALERT_LABELS[w.alertKind as AlertKind] ?? w.alertKind
   return (
     <tr className="bg-orange-50 text-xs print:bg-orange-50">
       <td className="border-b border-orange-100 py-1" />
       <td colSpan={4} className="border-b border-orange-100 px-3 py-1 text-orange-700">
         ⚠️ חשד לכפילות עם{' '}
         <strong>{w.otherFullname ?? 'לא ידוע'}</strong>
-        {w.otherNationalId ? ` (ת.ז. ${w.otherNationalId})` : ''} — נמסר
-        בדף&nbsp;#{w.otherPageNumber} למשתמש{' '}
+        {w.otherNationalId ? ` (ת.ז. ${w.otherNationalId})` : ''}
+        {reason ? <> — <span className="font-medium">{reason}</span></> : null}
+        {' '}— נמסר בדף&nbsp;#{w.otherPageNumber} למשתמש{' '}
         <strong>{w.otherCreatedByUsername}</strong>. יש לאמת ולעדכן.
       </td>
     </tr>

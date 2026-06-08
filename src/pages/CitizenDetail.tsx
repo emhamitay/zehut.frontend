@@ -275,24 +275,67 @@ export default function CitizenDetail() {
             <div className="mb-2 text-sm font-medium text-amber-800">
               התראות פתוחות ({openAlerts.length})
             </div>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2">
               {openAlerts.map((a) => (
-                <li key={a.id} className="text-xs text-slate-700">
-                  <span className="font-medium text-amber-800">
+                <li
+                  key={a.id}
+                  className="rounded-md border border-amber-200/60 bg-white/70 p-2 text-xs"
+                >
+                  <div className="font-medium text-amber-800">
                     {ALERT_LABELS[a.kind]}
-                  </span>
-                  {a.details.incoming && (
-                    <span className="mr-2 text-slate-500">
-                      ({
-                        [
+                  </div>
+                  {a.details.mismatchedFields.length > 0 && (
+                    <div className="mt-0.5 text-[11px] text-slate-500">
+                      שדות שונים:{' '}
+                      {a.details.mismatchedFields
+                        .map((f) =>
+                          f === 'id' ? 'תעודת זהות' : f === 'name' ? 'שם' : 'טלפון',
+                        )
+                        .join(' · ')}
+                    </div>
+                  )}
+                  {a.relatedPerson ? (
+                    <div className="mt-1.5 rounded-md border border-amber-200/70 bg-amber-50/40 p-2">
+                      <div className="text-[11px] text-slate-500">
+                        התנגשות עם אזרח קיים:
+                      </div>
+                      <div className="font-medium text-slate-900">
+                        {a.relatedPerson.fullname || '—'}
+                      </div>
+                      <div className="text-[11px] text-slate-600">
+                        {[
+                          a.relatedPerson.nationalId
+                            ? `ת"ז: ${a.relatedPerson.nationalId}`
+                            : null,
+                          a.relatedPerson.phones.length > 0
+                            ? `טלפון: ${a.relatedPerson.phones.join(', ')}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || '—'}
+                      </div>
+                      <div className="mt-1">
+                        <Link
+                          to={`/citizens/${a.relatedPerson.id}`}
+                          className="text-[11px] text-sky-700 underline hover:text-sky-800"
+                        >
+                          פתח את האזרח השני
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    a.details.incoming && (
+                      <div className="mt-1 text-[11px] text-slate-500">
+                        נתון נכנס:{' '}
+                        {[
                           a.details.incoming.fullname,
                           a.details.incoming.id,
                           a.details.incoming.phone?.join(', '),
                         ]
                           .filter(Boolean)
-                          .join(' · ')
-                      })
-                    </span>
+                          .join(' · ')}
+                      </div>
+                    )
                   )}
                 </li>
               ))}
