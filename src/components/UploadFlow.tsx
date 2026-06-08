@@ -9,6 +9,10 @@ import {
   type Alert,
   type PersonWithPhones,
 } from '@/lib/api'
+import {
+  shouldFallbackToAiAfterClientParse,
+  tryParseExcelClientSide,
+} from '@/lib/excel-parser'
 
 type Phase =
   | { kind: 'idle' }
@@ -44,8 +48,7 @@ async function parseFile(file: File) {
     const workbook = XLSX.read(buffer, { type: 'array' })
     const sheetName = workbook.SheetNames[0]
     const sheet = workbook.Sheets[sheetName]
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet)
-    return { type: 'excel' as const, rows }
+    return { type: 'excel' as const, sheet }
   }
   if (ext === 'docx') {
     const buffer = await file.arrayBuffer()
@@ -61,10 +64,7 @@ export default function UploadFlow() {
   const [extractingMessageIndex, setExtractingMessageIndex] = useState(0)
 
   useEffect(() => {
-    if (phase.kind !== 'extracting') {
-      setExtractingMessageIndex(0)
-      return
-    }
+    if (phase.kind !== 'extracting') return
 
     const intervalId = window.setInterval(() => {
       setExtractingMessageIndex((prev) => (prev + 1) % EXTRACTING_MESSAGES.length)
@@ -78,8 +78,31 @@ export default function UploadFlow() {
     setPhase({ kind: 'parsing', fileName: file.name })
     try {
       const payload = await parseFile(file)
-      setPhase({ kind: 'extracting', fileName: file.name })
-      const contacts = await extractContacts(payload)
+
+      let contacts: Awaited<ReturnType<typeof extractContacts>>
+
+      if (payload.type === 'excel') {
+        const clientContacts = tryParseExcelClientSide(payload.sheet)
+        if (
+          clientContacts !== null &&
+          !shouldFallbackToAiAfterClientParse(clientContacts)
+        ) {
+          // Parsed entirely on the client — skip OpenRouter
+          contacts = clientContacts
+        } else {
+          // Structure too ambiguous — fall back to server-side extraction
+          const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(payload.sheet)
+          setExtractingMessageIndex(0)
+          setPhase({ kind: 'extracting', fileName: file.name })
+          contacts = await extractContacts({ type: 'excel', rows })
+        }
+      } else {
+        // DOCX always goes through OpenRouter
+        setExtractingMessageIndex(0)
+        setPhase({ kind: 'extracting', fileName: file.name })
+        contacts = await extractContacts(payload)
+      }
+
       setPhase({ kind: 'committing', fileName: file.name })
       const result = await commitContacts(contacts, file.name)
       setPhase({
