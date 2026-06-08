@@ -61,6 +61,8 @@ export default function MergeConfirmation({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [confirmHighRisk, setConfirmHighRisk] = useState(false)
+
   const selected = selectedIdx !== null ? others[selectedIdx] : null
 
   const resolvedNationalId = useMemo(() => {
@@ -86,6 +88,15 @@ export default function MergeConfirmation({
     !!selected.other.nationalId &&
     candidate.nationalId !== selected.other.nationalId
 
+  const namesDiffer =
+    !!selected &&
+    !!candidate.fullname &&
+    !!selected.other.fullname &&
+    candidate.fullname.trim().toLowerCase() !==
+      selected.other.fullname.trim().toLowerCase()
+
+  const highRisk = idsDiffer && namesDiffer
+
   async function onConfirm() {
     if (!selected) return
     const trimmedReason = reason.trim()
@@ -95,6 +106,12 @@ export default function MergeConfirmation({
     }
     if (idsDiffer && !confirmDifferentIds) {
       setError('יש לאשר שמדובר באותו אדם למרות תעודות זהות שונות')
+      return
+    }
+    if (highRisk && !confirmHighRisk) {
+      setError(
+        'גם השם וגם תעודת הזהות שונים — סביר שמדובר בשני אנשים שונים שחולקים טלפון. סמן את התיבה אם אתה בטוח שזה אותו אדם.',
+      )
       return
     }
     setBusy(true)
@@ -109,7 +126,11 @@ export default function MergeConfirmation({
         },
         phonesToKeep: mergedPhones,
         reason: trimmedReason,
-        confirmDifferentIds: idsDiffer ? confirmDifferentIds : false,
+        confirmDifferentIds: idsDiffer
+          ? highRisk
+            ? confirmHighRisk
+            : confirmDifferentIds
+          : false,
       })
       if (!result.ok) {
         if (result.error === 'confirm_required') {
@@ -217,7 +238,32 @@ export default function MergeConfirmation({
                     </div>
                   </div>
 
-                  {idsDiffer && (
+                  {highRisk && (
+                    <div className="rounded-md border-2 border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+                      <div className="font-semibold">
+                        ⚠️ גם השם וגם תעודת הזהות שונים
+                      </div>
+                      <div className="mt-1 leading-relaxed text-slate-700">
+                        סביר שמדובר בשני אנשים שונים שחולקים טלפון (קו בית
+                        משותף, בני זוג, וכד׳). אם הם באמת אנשים שונים — לחץ
+                        "ביטול" והשאר את שתי הרשומות. אם אתה בטוח שזה אותו
+                        אדם — סמן את התיבה למטה.
+                      </div>
+                      <label className="mt-2 flex items-start gap-2 text-slate-900">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={confirmHighRisk}
+                          onChange={(e) => setConfirmHighRisk(e.target.checked)}
+                        />
+                        <span>
+                          אני בטוח/ה שזה אותו אדם למרות שגם השם וגם ת"ז שונים
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  {idsDiffer && !highRisk && (
                     <label className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50/70 p-2 text-xs text-amber-900">
                       <input
                         type="checkbox"
