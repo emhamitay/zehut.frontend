@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import AppLayout from '../components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
-import MergeConfirmation, {
-  type ConflictCandidate,
-} from '../components/MergeConfirmation'
+import { DataErrorRow } from '../components/DataErrorRow'
+import { SaveCollisionModal } from '../components/SaveCollisionModal'
 import {
   deletePerson,
   getPerson,
@@ -16,7 +15,14 @@ import {
   type PersonHistoryEntry,
   type PersonWithPhones,
 } from '../lib/api'
-import { ALERT_LABELS } from '../lib/alert-labels'
+import {
+  DATA_ERROR_ANCHOR,
+  DATA_ERROR_EMPTY,
+  DATA_ERROR_HEADER,
+  fieldsToHighlight,
+  inlineFieldNote,
+  type CollidingField,
+} from '../lib/data-error-copy'
 
 const FIELD_LABELS: Record<PersonAuditField, string> = {
   nationalId: 'תעודת זהות',
@@ -25,6 +31,7 @@ const FIELD_LABELS: Record<PersonAuditField, string> = {
   phone_removed: 'טלפון הוסר',
   merged_from: 'מוזג מאזרח אחר',
   deleted: 'האזרח נמחק',
+  alert_closed: 'שגיאת נתונים נסגרה',
 }
 
 type PhoneRow = {
@@ -54,6 +61,9 @@ export default function CitizenDetail() {
   const [busy, setBusy] = useState(false)
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<ConflictDetail[] | null>(null)
+  const [highlightedFields, setHighlightedFields] = useState<CollidingField[]>(
+    [],
+  )
   const [error, setError] = useState<string | null>(null)
 
   const [deleting, setDeleting] = useState(false)
@@ -114,10 +124,6 @@ export default function CitizenDetail() {
     phoneRows.length > 0 &&
     phoneRows[phoneRows.length - 1].value.trim() === ''
 
-  const currentTrimmedPhones = phoneRows
-    .map((r) => r.value.trim())
-    .filter((v) => v.length > 0)
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!id || !person) return
@@ -175,10 +181,10 @@ export default function CitizenDetail() {
         }
         return
       }
-      const resolvedCount = result.resolvedAlerts.length
+      const closedCount = result.closedAlerts.length
       setSavedNotice(
-        resolvedCount > 0
-          ? `עודכן בהצלחה. ${resolvedCount} התראות נסגרו אוטומטית`
+        closedCount > 0
+          ? `עודכן בהצלחה. ${closedCount} שגיאות נתונים נסגרו`
           : 'עודכן בהצלחה',
       )
       setReason('')
@@ -189,6 +195,54 @@ export default function CitizenDetail() {
       setBusy(false)
     }
   }
+
+  // After the user dismisses the save-collision modal, the form gently
+  // highlights the field(s) the modal pointed at. The modal carries the
+  // explanation; the underline is the breadcrumb.
+  function onCloseConflictModal() {
+    const fields = (conflicts ?? []).flatMap(fieldsToHighlight)
+    const dedup = Array.from(new Set(fields))
+    setHighlightedFields(dedup)
+    setConflicts(null)
+    // Focus the first offending field if it's the ID input.
+    requestAnimationFrame(() => {
+      const first = dedup[0]
+      if (first === 'nationalId') {
+        document.getElementById('nationalId')?.focus()
+      } else if (first === 'phone') {
+        const firstPhone = document.querySelector<HTMLInputElement>(
+          '[data-phone-input]',
+        )
+        firstPhone?.focus()
+      }
+    })
+  }
+
+  // When the user types in an offending field again, drop the highlight.
+  function clearHighlight(field: CollidingField) {
+    if (!highlightedFields.includes(field)) return
+    setHighlightedFields((curr) => curr.filter((f) => f !== field))
+  }
+
+  // Map each open alert to the form field it concerns, so the form can
+  // render an inline "מתנגש עם X" note next to that input.
+  const inlineNoteByField = useMemo(() => {
+    const out: Partial<Record<CollidingField, { alert: Alert; note: string }>> =
+      {}
+    if (!person) return out
+    for (const a of openAlerts) {
+      const field: CollidingField =
+        a.errorType === 'id_data_error' ? 'nationalId' : 'phone'
+      if (out[field]) continue
+      out[field] = { alert: a, note: inlineFieldNote(a, person) }
+    }
+    return out
+  }, [openAlerts, person])
+
+  const highlightClass = (f: CollidingField) =>
+    highlightedFields.includes(f)
+      ? 'border-amber-500/70 ring-2 ring-amber-200'
+      : ''
 
   async function onConfirmDelete() {
     if (!id) return
@@ -240,21 +294,6 @@ export default function CitizenDetail() {
     )
   }
 
-  const others: ConflictCandidate[] =
-    conflicts?.map((c) => ({
-      other: {
-        id: c.otherPerson.id,
-        nationalId: c.otherPerson.nationalId,
-        fullname: c.otherPerson.fullname,
-        sourceFile: null,
-        createdAt: '',
-        updatedAt: '',
-        phones: c.otherPerson.phones,
-      },
-      kind: c.kind,
-      mismatchedFields: c.mismatchedFields,
-    })) ?? []
-
   return (
     <AppLayout title="עדכון אזרח">
       <div className="space-y-6">
@@ -270,78 +309,28 @@ export default function CitizenDetail() {
           </div>
         </div>
 
-        {openAlerts.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4">
-            <div className="mb-2 text-sm font-medium text-amber-800">
-              התראות פתוחות ({openAlerts.length})
-            </div>
+        <section
+          id={DATA_ERROR_ANCHOR}
+          className="rounded-lg border border-border/70 bg-card/50 p-4"
+        >
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="text-sm font-medium">
+              {DATA_ERROR_HEADER}
+              {openAlerts.length > 0 ? ` (${openAlerts.length})` : ''}
+            </h2>
+          </div>
+          {openAlerts.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{DATA_ERROR_EMPTY}</p>
+          ) : (
             <ul className="space-y-2">
               {openAlerts.map((a) => (
-                <li
-                  key={a.id}
-                  className="rounded-md border border-amber-200/60 bg-white/70 p-2 text-xs"
-                >
-                  <div className="font-medium text-amber-800">
-                    {ALERT_LABELS[a.kind]}
-                  </div>
-                  {a.details.mismatchedFields.length > 0 && (
-                    <div className="mt-0.5 text-[11px] text-slate-500">
-                      שדות שונים:{' '}
-                      {a.details.mismatchedFields
-                        .map((f) =>
-                          f === 'id' ? 'תעודת זהות' : f === 'name' ? 'שם' : 'טלפון',
-                        )
-                        .join(' · ')}
-                    </div>
-                  )}
-                  {a.relatedPerson ? (
-                    <div className="mt-1.5 rounded-md border border-amber-200/70 bg-amber-50/40 p-2">
-                      <div className="text-[11px] text-slate-500">
-                        התנגשות עם אזרח קיים:
-                      </div>
-                      <div className="font-medium text-slate-900">
-                        {a.relatedPerson.fullname || '—'}
-                      </div>
-                      <div className="text-[11px] text-slate-600">
-                        {[
-                          a.relatedPerson.nationalId
-                            ? `ת"ז: ${a.relatedPerson.nationalId}`
-                            : null,
-                          a.relatedPerson.phones.length > 0
-                            ? `טלפון: ${a.relatedPerson.phones.join(', ')}`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ') || '—'}
-                      </div>
-                      <div className="mt-1">
-                        <Link
-                          to={`/citizens/${a.relatedPerson.id}`}
-                          className="text-[11px] text-sky-700 underline hover:text-sky-800"
-                        >
-                          פתח את האזרח השני
-                        </Link>
-                      </div>
-                    </div>
-                  ) : (
-                    a.details.incoming && (
-                      <div className="mt-1 text-[11px] text-slate-500">
-                        נתון נכנס:{' '}
-                        {[
-                          a.details.incoming.fullname,
-                          a.details.incoming.id,
-                          a.details.incoming.phone?.join(', '),
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </div>
-                    )
-                  )}
+                <li key={a.id}>
+                  <DataErrorRow selfPersonId={person.id} alert={a} />
                 </li>
               ))}
             </ul>
-          </div>
-        )}
+          )}
+        </section>
 
         <form
           onSubmit={onSubmit}
@@ -355,9 +344,17 @@ export default function CitizenDetail() {
               <input
                 id="nationalId"
                 value={nationalId}
-                onChange={(e) => setNationalId(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                onChange={(e) => {
+                  setNationalId(e.target.value)
+                  clearHighlight('nationalId')
+                }}
+                className={`w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring ${highlightClass('nationalId')}`}
               />
+              {inlineNoteByField.nationalId && (
+                <p className="text-xs text-amber-700">
+                  {inlineNoteByField.nationalId.note}
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <label htmlFor="fullname" className="text-sm font-medium">
@@ -381,12 +378,20 @@ export default function CitizenDetail() {
               {phoneRows.map((row) => (
                 <li
                   key={row.key}
-                  className="flex items-center gap-2 rounded-md border border-border/70 bg-background px-3 py-1.5 text-sm"
+                  className={`flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm ${
+                    highlightedFields.includes('phone')
+                      ? 'border-amber-500/70 ring-2 ring-amber-200'
+                      : 'border-border/70'
+                  }`}
                 >
                   <input
                     value={row.value}
-                    onChange={(e) => updatePhoneRow(row.key, e.target.value)}
+                    onChange={(e) => {
+                      updatePhoneRow(row.key, e.target.value)
+                      clearHighlight('phone')
+                    }}
                     placeholder="טלפון"
+                    data-phone-input
                     className="flex-1 rounded-md border border-border/40 bg-transparent px-2 py-1 text-sm outline-none focus:border-ring"
                   />
                   <Button
@@ -400,6 +405,11 @@ export default function CitizenDetail() {
                 </li>
               ))}
             </ul>
+            {inlineNoteByField.phone && (
+              <p className="text-xs text-amber-700">
+                {inlineNoteByField.phone.note}
+              </p>
+            )}
             <div>
               <Button
                 type="button"
@@ -438,28 +448,10 @@ export default function CitizenDetail() {
             </div>
           )}
 
-          {conflicts && conflicts.length > 0 && person && (
-            <MergeConfirmation
-              survivor={person}
-              candidate={{
-                nationalId: nationalId.trim() || null,
-                fullname: fullname.trim() || null,
-                phones: currentTrimmedPhones,
-              }}
-              others={others}
-              reason={reason}
-              onReasonChange={setReason}
-              onMerged={async (merged) => {
-                setConflicts(null)
-                setSavedNotice(`המיזוג בוצע בהצלחה`)
-                setReason('')
-                if (merged.id === person.id) {
-                  await load()
-                } else {
-                  navigate(`/citizens/${merged.id}`)
-                }
-              }}
-              onCancel={() => setConflicts(null)}
+          {conflicts && conflicts.length > 0 && (
+            <SaveCollisionModal
+              conflicts={conflicts}
+              onClose={onCloseConflictModal}
             />
           )}
 

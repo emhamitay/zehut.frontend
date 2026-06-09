@@ -57,17 +57,20 @@ function groupEntries(entries: ContactPageEntry[]): EntryGroup[] {
 // ─── table sub-components ────────────────────────────────────────────────────
 
 function WarningNote({ w }: { w: CrossPageWarning }) {
+  // Live-only: this row is rendered from a freshly-fetched alert. The
+  // sheet itself stores only its citizens; the moment the underlying
+  // alert is gone (deleted on save), this row stops appearing.
   const reason = ALERT_LABELS[w.alertKind as AlertKind] ?? w.alertKind
   return (
-    <tr className="bg-orange-50 text-xs print:bg-orange-50">
-      <td className="border-b border-orange-100 py-1" />
-      <td colSpan={4} className="border-b border-orange-100 px-3 py-1 text-orange-700">
-        ⚠️ חשד לכפילות עם{' '}
+    <tr className="bg-amber-50 text-xs print:bg-amber-50">
+      <td className="border-b border-amber-100 py-1" />
+      <td colSpan={4} className="border-b border-amber-100 px-3 py-1 text-amber-800">
+        ⚠️ שגיאת נתונים עם{' '}
         <strong>{w.otherFullname ?? 'לא ידוע'}</strong>
         {w.otherNationalId ? ` (ת.ז. ${w.otherNationalId})` : ''}
         {reason ? <> — <span className="font-medium">{reason}</span></> : null}
-        {' '}— נמסר בדף&nbsp;#{w.otherPageNumber} למשתמש{' '}
-        <strong>{w.otherCreatedByUsername}</strong>. יש לאמת ולעדכן.
+        {' '}— מופיע בדף&nbsp;#{w.otherPageNumber} של{' '}
+        <strong>{w.otherCreatedByUsername}</strong>. יש לתקן באחד הצדדים.
       </td>
     </tr>
   )
@@ -135,7 +138,7 @@ function PageTable({ entries }: { entries: ContactPageEntry[] }) {
                 colSpan={5}
                 className="border-t-2 border-amber-400 px-3 py-1 text-xs font-semibold text-amber-800"
               >
-                ⚠️ יש לאמת — חשד לכפילות: שתי הרשומות הבאות עשויות להיות אותו אדם
+                ⚠️ שגיאת נתונים בין שתי הרשומות הבאות — יש לתקן את השדה המתנגש
               </td>
             </tr>
             {group.entries.map((entry, ei) => (

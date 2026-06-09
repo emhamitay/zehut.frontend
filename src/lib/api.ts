@@ -20,14 +20,16 @@ export type AlertKind =
   | 'id_mismatch_name_phone_match'
   | 'id_name_mismatch_on_phone'
   | 'cross_person_mismatch'
-  | 'name_match_no_id'
   | 'phone_match_name_differs_no_id'
+
+export type DataErrorType = 'id_data_error' | 'phone_data_error'
 
 export type MismatchedField = 'id' | 'name' | 'phone'
 
 export type Alert = {
   id: string
   kind: AlertKind
+  errorType: DataErrorType
   personId: string
   relatedPersonId: string | null
   details: {
@@ -36,8 +38,6 @@ export type Alert = {
     incoming: Contact
   }
   sourceFile: string | null
-  resolvedAt: string | null
-  resolvedByUserId: string | null
   createdAt: string
   relatedPerson: PersonWithPhones | null
 }
@@ -289,6 +289,7 @@ export type PersonAuditField =
   | 'phone_removed'
   | 'merged_from'
   | 'deleted'
+  | 'alert_closed'
 
 export type PersonAuditRow = {
   id: string
@@ -316,7 +317,7 @@ export type UpdatePersonResult =
       ok: true
       person: PersonWithPhones
       audit: PersonAuditRow[]
-      resolvedAlerts: Alert[]
+      closedAlerts: Alert[]
     }
   | { ok: false; conflicts: ConflictDetail[] }
   | { ok: false; notFound: true }
@@ -376,7 +377,10 @@ export async function updatePerson(
     body: JSON.stringify(input),
   })
   if (res.status === 404) return { ok: false, notFound: true }
-  if (res.status === 409) return (await res.json()) as UpdatePersonResult
+  // 422: the server rejected the save because the new value collides with
+  // a uniqueness rule somewhere in the DB. The body carries the conflict
+  // detail the modal renders.
+  if (res.status === 422) return (await res.json()) as UpdatePersonResult
   if (!res.ok) throw new Error('update_person_failed')
   return (await res.json()) as UpdatePersonResult
 }
