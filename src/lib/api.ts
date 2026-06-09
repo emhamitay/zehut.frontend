@@ -40,6 +40,10 @@ export type Alert = {
   sourceFile: string | null
   createdAt: string
   relatedPerson: PersonWithPhones | null
+  // The actual value that triggered the collision — the shared
+  // nationalId for an ID error, or the specific shared phone for a
+  // phone error. Server-computed; the UI renders it verbatim.
+  collidingValue: string | null
 }
 
 export type CommitResult = {
@@ -273,6 +277,10 @@ export type ConflictDetail = {
     phones: string[]
   }
   mismatchedFields: MismatchedField[]
+  // The exact value the user tried to save that collides with
+  // otherPerson. Use this directly in error copy; do not pick from
+  // otherPerson.phones[0] etc., which may be unrelated to the collision.
+  collidingValue: string | null
 }
 
 export type UpdatePersonInput = {

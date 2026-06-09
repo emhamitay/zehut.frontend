@@ -56,20 +56,37 @@ function groupEntries(entries: ContactPageEntry[]): EntryGroup[] {
 
 // ─── table sub-components ────────────────────────────────────────────────────
 
-function WarningNote({ w }: { w: CrossPageWarning }) {
+function WarningNote({
+  w,
+  owner,
+}: {
+  w: CrossPageWarning
+  owner: ContactPageEntry
+}) {
   // Live-only: this row is rendered from a freshly-fetched alert. The
   // sheet itself stores only its citizens; the moment the underlying
   // alert is gone (deleted on save), this row stops appearing.
+  //
+  // The note sits directly *below* the citizen it belongs to, which is
+  // ambiguous on a dense sheet. The up-arrow + the owner's own name make
+  // it unmistakable that the warning is about the row above, not below.
   const reason = ALERT_LABELS[w.alertKind as AlertKind] ?? w.alertKind
+  const ownerName = owner.fullname ?? 'הרשומה שמעליה'
   return (
-    <tr className="bg-amber-50 text-xs print:bg-amber-50">
-      <td className="border-b border-amber-100 py-1" />
-      <td colSpan={4} className="border-b border-amber-100 px-3 py-1 text-amber-800">
-        ⚠️ שגיאת נתונים עם{' '}
-        <strong>{w.otherFullname ?? 'לא ידוע'}</strong>
+    <tr className="bg-red-50 text-xs print:bg-red-50">
+      <td className="border-b border-red-100 py-1 text-center align-top text-base font-bold leading-tight text-red-500">
+        ↑
+      </td>
+      <td
+        colSpan={4}
+        className="border-b border-r-2 border-red-100 border-r-red-300 px-3 py-1.5 text-red-800"
+      >
+        <span className="font-semibold">שגיאת נתונים עבור {ownerName}</span>
+        <span className="text-red-400"> (הרשומה שמעליה ↑)</span>
+        {' — '}
+        מתנגש עם <strong>{w.otherFullname ?? 'לא ידוע'}</strong>
         {w.otherNationalId ? ` (ת.ז. ${w.otherNationalId})` : ''}
-        {reason ? <> — <span className="font-medium">{reason}</span></> : null}
-        {' '}— מופיע בדף&nbsp;#{w.otherPageNumber} של{' '}
+        {reason ? <>, {reason}</> : null}. מופיע בדף&nbsp;#{w.otherPageNumber} של{' '}
         <strong>{w.otherCreatedByUsername}</strong>. יש לתקן באחד הצדדים.
       </td>
     </tr>
@@ -98,7 +115,7 @@ function EntryRow({
         <td className="px-3 py-2 text-center text-slate-300">□</td>
       </tr>
       {entry.crossPageWarnings.map((w, wi) => (
-        <WarningNote key={wi} w={w} />
+        <WarningNote key={wi} w={w} owner={entry} />
       ))}
     </Fragment>
   )

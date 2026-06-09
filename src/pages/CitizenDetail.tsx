@@ -234,15 +234,24 @@ export default function CitizenDetail() {
       const field: CollidingField =
         a.errorType === 'id_data_error' ? 'nationalId' : 'phone'
       if (out[field]) continue
-      out[field] = { alert: a, note: inlineFieldNote(a, person) }
+      out[field] = { alert: a, note: inlineFieldNote(a) }
     }
     return out
   }, [openAlerts, person])
 
-  const highlightClass = (f: CollidingField) =>
-    highlightedFields.includes(f)
-      ? 'border-amber-500/70 ring-2 ring-amber-200'
-      : ''
+  // A field that's part of an open data error always carries a soft red
+  // tint so the mismatch is visible at a glance. Right after the user
+  // dismisses the save-collision modal we strengthen it to a ring +
+  // focus, as a breadcrumb pointing back at what to fix.
+  const fieldStateClass = (f: CollidingField) => {
+    if (highlightedFields.includes(f)) {
+      return 'border-red-400 ring-2 ring-red-200'
+    }
+    if (inlineNoteByField[f]) {
+      return 'border-red-300 bg-red-50/60 dark:border-red-900/50 dark:bg-red-950/20'
+    }
+    return ''
+  }
 
   async function onConfirmDelete() {
     if (!id) return
@@ -348,10 +357,10 @@ export default function CitizenDetail() {
                   setNationalId(e.target.value)
                   clearHighlight('nationalId')
                 }}
-                className={`w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring ${highlightClass('nationalId')}`}
+                className={`w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring ${fieldStateClass('nationalId')}`}
               />
               {inlineNoteByField.nationalId && (
-                <p className="text-xs text-amber-700">
+                <p className="text-xs font-medium text-red-700 dark:text-red-300">
                   {inlineNoteByField.nationalId.note}
                 </p>
               )}
@@ -379,9 +388,7 @@ export default function CitizenDetail() {
                 <li
                   key={row.key}
                   className={`flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm ${
-                    highlightedFields.includes('phone')
-                      ? 'border-amber-500/70 ring-2 ring-amber-200'
-                      : 'border-border/70'
+                    fieldStateClass('phone') || 'border-border/70'
                   }`}
                 >
                   <input
@@ -406,7 +413,7 @@ export default function CitizenDetail() {
               ))}
             </ul>
             {inlineNoteByField.phone && (
-              <p className="text-xs text-amber-700">
+              <p className="text-xs font-medium text-red-700 dark:text-red-300">
                 {inlineNoteByField.phone.note}
               </p>
             )}
