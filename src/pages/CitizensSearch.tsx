@@ -167,7 +167,7 @@ export default function CitizensSearch() {
                           />
                         )}
                         <Link
-                          to={`/citizens/${h.person.id}`}
+                          to={`/citizens/${h.person.id}#data-errors`}
                           className="flex-1 cursor-pointer"
                         >
                           <div className="flex flex-wrap items-center gap-2">
@@ -175,8 +175,12 @@ export default function CitizensSearch() {
                               {h.person.fullname || '—'}
                             </span>
                             {h.openAlertCount > 0 && (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
-                                {h.openAlertCount} התראות פתוחות
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-800"
+                                title={`${h.openAlertCount} שגיאות נתונים פתוחות`}
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                {h.openAlertCount} שגיאות נתונים
                               </span>
                             )}
                           </div>

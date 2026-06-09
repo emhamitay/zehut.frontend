@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from './ui/button'
-import MergeConfirmation from './MergeConfirmation'
+import { DataErrorRow } from './DataErrorRow'
 import type { Alert, PersonWithPhones } from '@/lib/api'
-import { ALERT_LABELS } from '@/lib/alert-labels'
 
 type Props = {
   fileName: string
@@ -22,27 +20,6 @@ export default function UploadSummary({
   alerts,
   onUploadAnother,
 }: Props) {
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  const [mergeOpen, setMergeOpen] = useState<Record<string, boolean>>({})
-  const [reasonsByPerson, setReasonsByPerson] = useState<Record<string, string>>({})
-  const [mergedNotice, setMergedNotice] = useState<Record<string, string>>({})
-
-  const personMap = new Map<string, typeof alerts>()
-  for (const alert of alerts) {
-    if (!personMap.has(alert.personId)) {
-      personMap.set(alert.personId, [])
-    }
-    personMap.get(alert.personId)!.push(alert)
-  }
-
-  const personById = new Map<string, PersonWithPhones>()
-  for (const p of inserted) personById.set(p.id, p)
-  for (const { person } of phoneAdded) personById.set(person.id, person)
-
-  const visibleGroups = Array.from(personMap.entries()).filter(
-    ([id]) => !dismissed.has(id),
-  )
-
   return (
     <div className="flex flex-col items-center gap-6 rounded-xl border border-border/70 bg-muted/20 p-8 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-100">
@@ -58,144 +35,25 @@ export default function UploadSummary({
         <Stat label="נוספו" value={inserted.length} tone="sky" />
         <Stat label="כבר קיימים" value={ignored} tone="slate" />
         <Stat label="טלפונים נוספו" value={phoneAdded.length} tone="emerald" />
-        <Stat label="התראות" value={alerts.length} tone="amber" />
+        <Stat label="שגיאות נתונים" value={alerts.length} tone="amber" />
       </div>
 
-      {visibleGroups.length > 0 && (
+      {alerts.length > 0 && (
         <div className="w-full max-w-2xl text-right">
           <div className="mb-2 text-xs font-medium text-slate-500">
-            אזרחים שצריכים בדיקה ידנית ({visibleGroups.length}):
+            שגיאות נתונים שזוהו ({alerts.length}):
           </div>
           <ul className="space-y-2">
-            {visibleGroups.map(([personId, groupAlerts]) => {
-              const person = personById.get(personId)
-              const alertWithRelated = groupAlerts.find(
-                (a) => a.relatedPerson != null,
-              )
-              const relatedPerson = alertWithRelated?.relatedPerson ?? null
-              const isMergeOpen = mergeOpen[personId] === true
-              const reason = reasonsByPerson[personId] ?? ''
-              const successNotice = mergedNotice[personId]
-              return (
-                <li
-                  key={personId}
-                  className="space-y-2 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-right"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="font-medium text-amber-800">
-                        {person?.fullname || '—'}
-                      </div>
-                      <div className="mt-0.5 text-slate-600">
-                        {[
-                          person?.nationalId ? `ת"ז: ${person.nationalId}` : null,
-                          person?.phones.length
-                            ? `טלפון: ${person.phones.join(', ')}`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ') || '—'}
-                      </div>
-                      <div className="mt-1 space-y-0.5">
-                        {groupAlerts.map((a) => (
-                          <div key={a.id} className="text-slate-700">
-                            • {ALERT_LABELS[a.kind]}
-                          </div>
-                        ))}
-                      </div>
-                      {relatedPerson && (
-                        <div className="mt-2 rounded-md border border-amber-200/70 bg-white/70 p-2">
-                          <div className="text-[11px] text-slate-500">
-                            מתנגש עם אזרח קיים:
-                          </div>
-                          <div className="font-medium text-slate-900">
-                            {relatedPerson.fullname || '—'}
-                          </div>
-                          <div className="text-[11px] text-slate-600">
-                            {[
-                              relatedPerson.nationalId
-                                ? `ת"ז: ${relatedPerson.nationalId}`
-                                : null,
-                              relatedPerson.phones.length
-                                ? `טלפון: ${relatedPerson.phones.join(', ')}`
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ') || '—'}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Button variant="outline" size="xs" asChild>
-                        <Link to={`/citizens/${personId}`}>ערוך</Link>
-                      </Button>
-                      {relatedPerson && person && !isMergeOpen && (
-                        <Button
-                          variant="default"
-                          size="xs"
-                          onClick={() =>
-                            setMergeOpen((s) => ({ ...s, [personId]: true }))
-                          }
-                        >
-                          מזג
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() =>
-                          setDismissed((s) => new Set([...s, personId]))
-                        }
-                      >
-                        השאר כך
-                      </Button>
-                    </div>
-                  </div>
-
-                  {successNotice && (
-                    <div className="rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-1 text-[11px] text-emerald-800">
-                      {successNotice}
-                    </div>
-                  )}
-
-                  {isMergeOpen && person && relatedPerson && alertWithRelated && (
-                    <MergeConfirmation
-                      survivor={person}
-                      candidate={{
-                        nationalId: person.nationalId,
-                        fullname: person.fullname,
-                        phones: person.phones,
-                      }}
-                      others={[
-                        {
-                          other: relatedPerson,
-                          kind: alertWithRelated.kind,
-                          mismatchedFields:
-                            alertWithRelated.details.mismatchedFields,
-                        },
-                      ]}
-                      reason={reason}
-                      onReasonChange={(r) =>
-                        setReasonsByPerson((s) => ({ ...s, [personId]: r }))
-                      }
-                      onMerged={() => {
-                        setMergeOpen((s) => ({ ...s, [personId]: false }))
-                        setMergedNotice((s) => ({
-                          ...s,
-                          [personId]: 'המיזוג בוצע בהצלחה',
-                        }))
-                        setDismissed((s) => new Set([...s, personId]))
-                      }}
-                      onCancel={() =>
-                        setMergeOpen((s) => ({ ...s, [personId]: false }))
-                      }
-                    />
-                  )}
-                </li>
-              )
-            })}
+            {alerts.map((a) => (
+              <li key={a.id}>
+                <DataErrorRow selfPersonId={a.personId} alert={a} />
+              </li>
+            ))}
           </ul>
+          <p className="mt-2 text-[11px] text-slate-500">
+            לחיצה על "ערוך" תפתח את האזרח שזיהינו עם השדה שטעון תיקון.
+            תיקון השדה המתנגש סוגר את השגיאה אוטומטית.
+          </p>
         </div>
       )}
 
