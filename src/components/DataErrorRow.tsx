@@ -22,10 +22,11 @@ type Props = {
 }
 
 function pickCollidingValue(alert: Alert): string {
-  // The colliding value is whatever is shared between self and the other
-  // side. We surface the other side's value here because the row is
-  // about pointing out who else has it. The form's inline-on-field
-  // rendering does the symmetric thing.
+  // Prefer the server's computed colliding value — that's the actual
+  // shared phone / nationalId, not just `phones[0]` which may not be
+  // the one in conflict. Fall back to the other side's first phone only
+  // if the server didn't ship it.
+  if (alert.collidingValue) return alert.collidingValue
   const other = alert.relatedPerson
   if (!other) return '—'
   if (alert.errorType === 'id_data_error') {

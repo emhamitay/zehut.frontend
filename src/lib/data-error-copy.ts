@@ -1,4 +1,4 @@
-import type { Alert, ConflictDetail, DataErrorType, PersonWithPhones } from './api'
+import type { Alert, ConflictDetail, DataErrorType } from './api'
 
 // Hebrew copy for the new שגיאת נתונים (data error) UX. One place,
 // one set of phrases — everywhere the user reads about a collision
@@ -40,11 +40,15 @@ export function saveCollisionTitle(): string {
 
 export function saveCollisionLine(detail: ConflictDetail): string {
   const other = describeOtherSide({ fullname: detail.otherPerson.fullname })
+  // Prefer the server-supplied collidingValue: that's the actual value
+  // the user tried to save. Fall back only if the server didn't send it.
   if (isPhoneCollision(detail)) {
-    const phone = detail.otherPerson.phones[0] ?? 'הזה'
+    const phone =
+      detail.collidingValue ?? detail.otherPerson.phones[0] ?? 'הזה'
     return `מספר הטלפון ${phone} שייך כבר ל${other}. אנא בדקו את המספר שהוקלד ונסו שנית.`
   }
-  const id = detail.otherPerson.nationalId ?? 'הזו'
+  const id =
+    detail.collidingValue ?? detail.otherPerson.nationalId ?? 'הזו'
   return `תעודת הזהות ${id} שייכת כבר ל${other}. אנא בדקו את המספר שהוקלד ונסו שנית.`
 }
 
@@ -69,14 +73,18 @@ export function fieldsToHighlight(detail: ConflictDetail): CollidingField[] {
 export const DATA_ERROR_ANCHOR = 'data-errors'
 
 // What to show on the form's colliding field, inline next to the input.
-export function inlineFieldNote(alert: Alert, _self: PersonWithPhones): string {
+// Uses the server-supplied `collidingValue` so the inline note points
+// at the actual offending value, not a guess like `relatedPerson.phones[0]`.
+export function inlineFieldNote(alert: Alert): string {
   const other = describeOtherSide({
     fullname: alert.relatedPerson?.fullname ?? null,
   })
   if (alert.errorType === 'id_data_error') {
-    const id = alert.relatedPerson?.nationalId ?? '—'
+    const id =
+      alert.collidingValue ?? alert.relatedPerson?.nationalId ?? '—'
     return `מתנגש עם ${other}: ${id}`
   }
-  const phone = alert.relatedPerson?.phones[0] ?? '—'
+  const phone =
+    alert.collidingValue ?? alert.relatedPerson?.phones[0] ?? '—'
   return `מתנגש עם ${other}: ${phone}`
 }

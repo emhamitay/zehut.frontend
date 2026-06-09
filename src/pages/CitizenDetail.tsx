@@ -234,7 +234,7 @@ export default function CitizenDetail() {
       const field: CollidingField =
         a.errorType === 'id_data_error' ? 'nationalId' : 'phone'
       if (out[field]) continue
-      out[field] = { alert: a, note: inlineFieldNote(a, person) }
+      out[field] = { alert: a, note: inlineFieldNote(a) }
     }
     return out
   }, [openAlerts, person])
