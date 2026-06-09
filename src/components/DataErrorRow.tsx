@@ -3,10 +3,8 @@ import { Button } from './ui/button'
 import {
   DATA_ERROR_ANCHOR,
   EDIT_ACTION_LABEL,
-  describeOtherSide,
-  rowMessage,
+  describeDataError,
 } from '@/lib/data-error-copy'
-import { DATA_ERROR_TYPE_LABELS } from '@/lib/alert-labels'
 import type { Alert } from '@/lib/api'
 
 type Props = {
@@ -16,61 +14,83 @@ type Props = {
   // Optional override for the edit target. Defaults to the self citizen's
   // detail page anchored on the data-errors section.
   editHref?: string
-  // Render-mode tweak: print-friendly variant strips the button and uses
-  // dimmer borders; used in the printable contact sheet.
+  // Render-mode tweak: print-friendly variant strips the button.
   variant?: 'interactive' | 'print'
 }
 
-function pickCollidingValue(alert: Alert): string {
-  // Prefer the server's computed colliding value — that's the actual
-  // shared phone / nationalId, not just `phones[0]` which may not be
-  // the one in conflict. Fall back to the other side's first phone only
-  // if the server didn't ship it.
-  if (alert.collidingValue) return alert.collidingValue
-  const other = alert.relatedPerson
-  if (!other) return '—'
-  if (alert.errorType === 'id_data_error') {
-    return other.nationalId ?? '—'
-  }
-  return other.phones[0] ?? '—'
+function WarningTriangle({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  )
 }
 
-export function DataErrorRow({ selfPersonId, alert, editHref, variant = 'interactive' }: Props) {
+export function DataErrorRow({
+  selfPersonId,
+  alert,
+  editHref,
+  variant = 'interactive',
+}: Props) {
   const other = alert.relatedPerson
-  const collidingValue = pickCollidingValue(alert)
-  const label = DATA_ERROR_TYPE_LABELS[alert.errorType]
-  const message = rowMessage({
-    errorType: alert.errorType,
-    collidingValue,
-    otherFullname: other?.fullname ?? null,
-  })
+  const { label, headline, explanation, otherName, otherIdNote } =
+    describeDataError(alert)
   const href = editHref ?? `/citizens/${selfPersonId}#${DATA_ERROR_ANCHOR}`
-
-  const tone =
-    alert.errorType === 'id_data_error'
-      ? 'border-amber-400/60 bg-amber-50 dark:bg-amber-950/30'
-      : 'border-sky-400/60 bg-sky-50 dark:bg-sky-950/30'
 
   return (
     <div
-      className={`flex items-start justify-between gap-3 rounded-md border ${tone} px-3 py-2`}
+      className="flex items-start gap-3 rounded-lg border border-red-200/80 bg-red-50/70 px-3.5 py-3 dark:border-red-900/40 dark:bg-red-950/20"
       data-data-error-row
       data-error-type={alert.errorType}
     >
-      <div className="flex flex-col gap-0.5 text-sm">
-        <span className="font-medium text-foreground">{label}</span>
-        <span className="text-muted-foreground">{message}</span>
+      <WarningTriangle className="mt-0.5 size-4 shrink-0 text-red-500" />
+
+      <div className="flex flex-1 flex-col gap-1">
+        <span className="text-sm font-semibold text-red-900 dark:text-red-200">
+          {label}
+        </span>
+        <p className="text-sm text-foreground/90">{headline}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {explanation}
+        </p>
+
         {other ? (
-          <Link
-            to={`/citizens/${other.id}#${DATA_ERROR_ANCHOR}`}
-            className="text-xs text-muted-foreground/80 underline-offset-2 hover:underline"
-          >
-            {describeOtherSide({ fullname: other.fullname })}
-          </Link>
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <span className="text-xs text-muted-foreground">האדם השני:</span>
+            {variant === 'interactive' ? (
+              <Link
+                to={`/citizens/${other.id}#${DATA_ERROR_ANCHOR}`}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
+              >
+                {otherName}
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium">
+                {otherName}
+              </span>
+            )}
+            {otherIdNote ? (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                {otherIdNote}
+              </span>
+            ) : null}
+          </div>
         ) : null}
       </div>
+
       {variant === 'interactive' ? (
-        <Button asChild size="sm" variant="outline">
+        <Button asChild size="sm" variant="outline" className="shrink-0">
           <Link to={href}>{EDIT_ACTION_LABEL}</Link>
         </Button>
       ) : null}
