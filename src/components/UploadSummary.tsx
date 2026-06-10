@@ -20,6 +20,18 @@ export default function UploadSummary({
   alerts,
   onUploadAnother,
 }: Props) {
+  // The alert only carries personId; build a name lookup from the people
+  // the commit just touched so each row can name its own side.
+  const nameByPersonId = new Map<string, string | null>()
+  for (const p of inserted) nameByPersonId.set(p.id, p.fullname)
+  for (const { person } of phoneAdded)
+    nameByPersonId.set(person.id, person.fullname)
+  for (const a of alerts) {
+    if (a.relatedPerson) {
+      nameByPersonId.set(a.relatedPerson.id, a.relatedPerson.fullname)
+    }
+  }
+
   return (
     <div className="flex flex-col items-center gap-6 rounded-xl border border-border/70 bg-muted/20 p-8 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-100">
@@ -46,7 +58,11 @@ export default function UploadSummary({
           <ul className="space-y-2">
             {alerts.map((a) => (
               <li key={a.id}>
-                <DataErrorRow selfPersonId={a.personId} alert={a} />
+                <DataErrorRow
+                  selfPersonId={a.personId}
+                  selfPersonName={nameByPersonId.get(a.personId) ?? null}
+                  alert={a}
+                />
               </li>
             ))}
           </ul>

@@ -10,6 +10,8 @@ import type { Alert } from '@/lib/api'
 type Props = {
   // Which citizen is "us" — the row is rendered on this citizen's surface.
   selfPersonId: string
+  // The self citizen's name, so the headline can name both sides.
+  selfPersonName: string | null
   alert: Alert
   // Optional override for the edit target. Defaults to the self citizen's
   // detail page anchored on the data-errors section.
@@ -39,12 +41,15 @@ function WarningTriangle({ className }: { className?: string }) {
 
 export function DataErrorRow({
   selfPersonId,
+  selfPersonName,
   alert,
   editHref,
   variant = 'interactive',
 }: Props) {
-  const { label, headline, explanation, other, otherName, otherIdNote } =
-    describeDataError(alert)
+  const { label, headline, explanation, other, otherName } = describeDataError(
+    alert,
+    selfPersonName,
+  )
   const href = editHref ?? `/citizens/${selfPersonId}#${DATA_ERROR_ANCHOR}`
 
   return (
@@ -78,19 +83,6 @@ export function DataErrorRow({
               {otherName}
             </span>
           )}
-          {other.fromImport ? (
-            <span
-              className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              title="הרשומה הזו לא נשמרה כאזרח נפרד כי תעודת הזהות זהה. הנתונים שמופיעים כאן הם מהקובץ שיובא."
-            >
-              מהקובץ שיובא
-            </span>
-          ) : null}
-          {otherIdNote ? (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-              {otherIdNote}
-            </span>
-          ) : null}
         </div>
       </div>
 

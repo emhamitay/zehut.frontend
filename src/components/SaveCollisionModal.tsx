@@ -10,6 +10,8 @@ import type { ConflictDetail } from '@/lib/api'
 
 type Props = {
   conflicts: ConflictDetail[]
+  // The name of the citizen being edited, so each line names both sides.
+  selfPersonName: string | null
   onClose: () => void
 }
 
@@ -37,7 +39,11 @@ function WarningTriangle({ className }: { className?: string }) {
 // a light dim + blur rather than a heavy black overlay, so the page stays
 // recognizable behind it. After dismiss, the caller gently highlights the
 // offending field — that's the breadcrumb. No red borders on the form.
-export function SaveCollisionModal({ conflicts, onClose }: Props) {
+export function SaveCollisionModal({
+  conflicts,
+  selfPersonName,
+  onClose,
+}: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -82,7 +88,7 @@ export function SaveCollisionModal({ conflicts, onClose }: Props) {
             {single ? (
               <div className="mt-1.5 space-y-1.5">
                 <p className="text-sm text-foreground/90">
-                  {saveCollisionLine(conflicts[0])}
+                  {saveCollisionLine(conflicts[0], selfPersonName)}
                 </p>
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   {saveCollisionExplanation(conflicts[0])}
@@ -93,7 +99,7 @@ export function SaveCollisionModal({ conflicts, onClose }: Props) {
                 {conflicts.map((c, i) => (
                   <li key={i} className="space-y-1">
                     <p className="text-sm text-foreground/90">
-                      {saveCollisionLine(c)}
+                      {saveCollisionLine(c, selfPersonName)}
                     </p>
                     <p className="text-xs leading-relaxed text-muted-foreground">
                       {saveCollisionExplanation(c)}

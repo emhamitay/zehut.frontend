@@ -334,7 +334,11 @@ export default function CitizenDetail() {
             <ul className="space-y-2">
               {openAlerts.map((a) => (
                 <li key={a.id}>
-                  <DataErrorRow selfPersonId={person.id} alert={a} />
+                  <DataErrorRow
+                    selfPersonId={person.id}
+                    selfPersonName={person.fullname}
+                    alert={a}
+                  />
                 </li>
               ))}
             </ul>
@@ -458,6 +462,7 @@ export default function CitizenDetail() {
           {conflicts && conflicts.length > 0 && (
             <SaveCollisionModal
               conflicts={conflicts}
+              selfPersonName={fullname.trim() || person.fullname}
               onClose={onCloseConflictModal}
             />
           )}
