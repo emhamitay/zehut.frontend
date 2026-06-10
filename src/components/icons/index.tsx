@@ -40,3 +40,22 @@ export function SpinnerIcon({ className, ...props }: IconProps) {
     </svg>
   )
 }
+
+export function WarningIcon({ className, ...props }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      {...props}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.6}
+        d="M12 9v4m0 4h.01M10.29 3.86 1.82 18.2A2.25 2.25 0 0 0 3.76 21h16.48a2.25 2.25 0 0 0 1.94-2.8L13.71 3.86a2.01 2.01 0 0 0-3.42 0Z"
+      />
+    </svg>
+  )
+}

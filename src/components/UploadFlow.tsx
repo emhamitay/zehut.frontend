@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import FileDropZone from './FileDropZone'
 import UploadSummary from './UploadSummary'
+import { WarningIcon } from './icons'
 import {
   commitContacts,
   extractContacts,
@@ -40,6 +41,32 @@ const EXTRACTING_MESSAGES = [
   'בעה"י הכל בבדיקה אחרונה...',
   'בס"ד, אנחנו כבר בשלבים האחרונים...',
 ]
+
+const SHOW_AI_DATA_WARNING = import.meta.env.VITE_AI_SENDS_DATA === 'true'
+
+function AiDataWarningBanner() {
+  console.log('SHOW_AI_DATA_WARNING', SHOW_AI_DATA_WARNING)
+  if (!SHOW_AI_DATA_WARNING) return null
+
+  return (
+    <div
+      role="note"
+      className="mb-4 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-3 text-amber-950 shadow-sm ring-1 ring-amber-200/60"
+    >
+      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-200">
+        <WarningIcon className="h-5 w-5" aria-hidden="true" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold">הערת פרטיות חשובה</p>
+        <p className="text-sm leading-6 text-amber-900/90">
+          כשעיבוד האקסל עובר דרך AI מרוחק, המידע נשלח לשירות חיצוני. לכן אין
+          להעלות כאן מספרי תעודת זהות אמיתיים. לסביבה חיה ולשימוש בנתונים אמיתיים,
+          יש לפנות למפתח כדי להפעיל את גרסת ה-AI בתשלום.
+        </p>
+      </div>
+    </div>
+  )
+}
 
 async function parseFile(file: File) {
   const ext = file.name.split('.').pop()?.toLowerCase()
@@ -147,11 +174,14 @@ export default function UploadFlow() {
           : undefined
 
   return (
-    <FileDropZone
-      onFile={handleFile}
-      busy={phase.kind !== 'idle'}
-      busyLabel={busyLabel}
-      error={error}
-    />
+    <div>
+      <AiDataWarningBanner />
+      <FileDropZone
+        onFile={handleFile}
+        busy={phase.kind !== 'idle'}
+        busyLabel={busyLabel}
+        error={error}
+      />
+    </div>
   )
 }

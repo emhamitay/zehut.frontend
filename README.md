@@ -95,6 +95,10 @@ bun install
 # Point the client at the API
 echo "VITE_API_BASE_URL=http://localhost:4000" > .env.local
 
+# Set to true when uploads may go through a remote AI service.
+# The upload page will show a yellow privacy warning in that mode.
+echo "VITE_AI_SENDS_DATA=false" >> .env.local
+
 bun run dev      # adjust to your package.json scripts
 ```
 
@@ -124,3 +128,5 @@ src/
 ## Data & privacy
 
 This repository contains no personal data. All screenshots and demos use synthetic records, and the API base URL is supplied via environment variables.
+
+If the upload flow is configured to send files through a remote AI service, the UI shows a privacy warning banner and real national ID numbers should not be uploaded.
