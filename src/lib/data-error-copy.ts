@@ -1,9 +1,13 @@
-import type { Alert, AlertKind, ConflictDetail, DataErrorType } from './api'
+import type { Alert, ConflictDetail, DataErrorType } from './api'
 import { DATA_ERROR_TYPE_LABELS } from './alert-labels'
 
 // Hebrew copy for the שגיאת נתונים (data error) UX. One place, one set of
 // phrases — everywhere the user reads about a collision they read it
 // through this module.
+//
+// There are exactly two real situations: two citizens sharing a national
+// ID, and two citizens sharing a phone. So there are exactly two
+// messages, each naming BOTH people and stating the real-world reason.
 
 export const DATA_ERROR_HEADER = 'שגיאות נתונים'
 export const DATA_ERROR_EMPTY = 'אין שגיאות נתונים פתוחות.'
@@ -24,75 +28,52 @@ export function describeOtherSide(other: { fullname: string | null }): string {
   return other.fullname?.trim() || 'אדם ללא שם'
 }
 
-// The "why" behind each alert kind, written for a non-technical
-// coordinator. The goal is that the rule never reads as an arbitrary
-// system quirk — the sentence explains the real-world reason the two
-// records can't both be right.
-const KIND_EXPLANATIONS: Record<AlertKind, string> = {
-  name_mismatch_on_id:
-    'לאותה תעודת זהות לא יכולים להיות שני שמות שונים — אחת מהרשומות שגויה.',
-  name_phone_mismatch_on_id:
-    'אותה תעודת זהות מופיעה עם שם וטלפון שונים — ככל הנראה אחת מהרשומות שגויה.',
-  id_mismatch_name_phone_match:
-    'שני אנשים בעלי תעודות זהות שונות חולקים את אותו מספר טלפון. מאחר ששני אנשים שונים לא אמורים להחזיק באותו מספר, סביר שאחד המספרים הוקלד בטעות.',
-  id_name_mismatch_on_phone:
-    'אותו מספר טלפון רשום אצל שני אנשים שונים (שם ותעודת זהות שונים). שני אנשים שונים לא אמורים לחלוק מספר טלפון — כנראה אחד המספרים שגוי.',
-  cross_person_mismatch:
-    'מספר הטלפון משויך כעת לאדם אחר. ייתכן שהמספר הוקלד בטעות או הועבר בין הרשומות.',
-  phone_match_name_differs_no_id:
-    'אותו מספר טלפון מופיע אצל שני אנשים עם שמות שונים — ככל הנראה אחד המספרים שגוי.',
+// The one-line "what's wrong", naming both citizens. `self` is the person
+// whose surface the message is rendered on; `other` is the citizen on the
+// far side of the collision.
+export function headline(
+  self: string | null,
+  other: string | null,
+  value: string,
+  errorType: DataErrorType,
+): string {
+  const a = describeOtherSide({ fullname: self })
+  const b = describeOtherSide({ fullname: other })
+  if (errorType === 'id_data_error') {
+    return `אותה תעודת זהות (${value}) רשומה אצל ${a} ואצל ${b}.`
+  }
+  return `אותו מספר טלפון (${value}) רשום אצל ${a} ואצל ${b}.`
 }
 
-export function dataErrorExplanation(kind: AlertKind): string {
-  return KIND_EXPLANATIONS[kind]
+// The "why", one per error type.
+const EXPLANATIONS: Record<DataErrorType, string> = {
+  id_data_error:
+    'לאדם אחד יש תעודת זהות אחת — סביר ששם אחד הוקלד בטעות. בדקו ותקנו.',
+  phone_data_error:
+    'שני אנשים שונים לא אמורים לחלוק מספר טלפון — סביר שאחד המספרים הוקלד בטעות. בדקו ותקנו.',
 }
 
-// Kinds where the two records share a phone but carry *different*
-// national IDs. For these we explicitly surface the other person's ID so
-// the coordinator can see at a glance that these are two distinct people.
-const DIFFERENT_ID_KINDS = new Set<AlertKind>([
-  'id_mismatch_name_phone_match',
-  'id_name_mismatch_on_phone',
-])
+export function dataErrorExplanation(errorType: DataErrorType): string {
+  return EXPLANATIONS[errorType]
+}
 
-// The "other side" of a data error. Usually a live citizen record
-// (`relatedPerson`), but for a same-ID import conflict the two rows
-// merged into one person and the conflicting row exists only in the
-// snapshot — so we fall back to `details.incoming`. `fromImport` is true
-// in that case, and `personId` is null (there is nothing to link to).
+// The "other side" of a data error: always a live citizen now (both rows
+// of a collision exist as their own records).
 export type OtherSide = {
   fullname: string | null
   nationalId: string | null
   phones: string[]
   personId: string | null
-  fromImport: boolean
 }
 
 export function resolveOtherSide(alert: Alert): OtherSide {
   const rp = alert.relatedPerson
-  if (rp) {
-    return {
-      fullname: rp.fullname,
-      nationalId: rp.nationalId,
-      phones: rp.phones,
-      personId: rp.id,
-      fromImport: false,
-    }
-  }
-  const inc = alert.details.incoming
   return {
-    fullname: inc.fullname,
-    nationalId: inc.id,
-    phones: inc.phone ?? [],
-    personId: null,
-    fromImport: true,
+    fullname: rp?.fullname ?? null,
+    nationalId: rp?.nationalId ?? null,
+    phones: rp?.phones ?? [],
+    personId: rp?.id ?? null,
   }
-}
-
-export function otherIdNote(alert: Alert): string | null {
-  if (!DIFFERENT_ID_KINDS.has(alert.kind)) return null
-  const id = resolveOtherSide(alert).nationalId
-  return id ? `ת"ז שונה: ${id}` : 'בעל/ת תעודת זהות שונה'
 }
 
 function collidingValueOf(alert: Alert): string {
@@ -111,25 +92,21 @@ export type DataErrorParts = {
   explanation: string
   other: OtherSide
   otherName: string
-  otherIdNote: string | null
 }
 
-export function describeDataError(alert: Alert): DataErrorParts {
+export function describeDataError(
+  alert: Alert,
+  selfPersonName: string | null,
+): DataErrorParts {
   const other = resolveOtherSide(alert)
   const otherName = describeOtherSide({ fullname: other.fullname })
   const value = collidingValueOf(alert)
-  const source = other.fromImport ? ' (מהרשומה שיובאה לקובץ)' : ''
-  const headline =
-    alert.errorType === 'id_data_error'
-      ? `תעודת זהות ${value} מופיעה גם אצל ${otherName}${source}.`
-      : `מספר טלפון ${value} מופיע גם אצל ${otherName}${source}.`
   return {
     label: DATA_ERROR_TYPE_LABELS[alert.errorType],
-    headline,
-    explanation: dataErrorExplanation(alert.kind),
+    headline: headline(selfPersonName, other.fullname, value, alert.errorType),
+    explanation: dataErrorExplanation(alert.errorType),
     other,
     otherName,
-    otherIdNote: otherIdNote(alert),
   }
 }
 
@@ -139,37 +116,37 @@ export function saveCollisionTitle(): string {
   return 'לא ניתן לשמור — נמצאה שגיאת נתונים'
 }
 
-export function saveCollisionLine(detail: ConflictDetail): string {
-  const other = describeOtherSide({ fullname: detail.otherPerson.fullname })
-  // Prefer the server-supplied collidingValue: that's the actual value
-  // the user tried to save. Fall back only if the server didn't send it.
-  if (isPhoneCollision(detail)) {
-    const phone =
-      detail.collidingValue ?? detail.otherPerson.phones[0] ?? 'הזה'
-    return `מספר הטלפון ${phone} שייך כבר ל${other}.`
-  }
-  const id = detail.collidingValue ?? detail.otherPerson.nationalId ?? 'הזו'
-  return `תעודת הזהות ${id} שייכת כבר ל${other}.`
+export function saveCollisionLine(
+  detail: ConflictDetail,
+  selfPersonName: string | null,
+): string {
+  const errorType = errorTypeOf(detail)
+  const value =
+    detail.collidingValue ??
+    (errorType === 'phone_data_error'
+      ? detail.otherPerson.phones[0]
+      : detail.otherPerson.nationalId) ??
+    '—'
+  return headline(selfPersonName, detail.otherPerson.fullname, value, errorType)
 }
 
 export function saveCollisionExplanation(detail: ConflictDetail): string {
-  return `${dataErrorExplanation(detail.kind)} אנא בדקו את הערך שהוקלד ותקנו אותו כדי לשמור.`
+  return `${dataErrorExplanation(errorTypeOf(detail))} אנא בדקו את הערך שהוקלד ותקנו אותו כדי לשמור.`
 }
 
 // The backend's AlertKind already classifies a conflict into "this is an
-// ID issue" vs "this is a phone issue". Mirror that classification on
-// the wire payload so the frontend never has to re-derive it.
-function isPhoneCollision(detail: ConflictDetail): boolean {
-  return (
-    detail.kind !== 'name_mismatch_on_id' &&
-    detail.kind !== 'name_phone_mismatch_on_id'
-  )
+// ID issue" vs "this is a phone issue". Mirror that classification here.
+function errorTypeOf(detail: ConflictDetail): DataErrorType {
+  return detail.kind === 'name_mismatch_on_id' ||
+    detail.kind === 'name_phone_mismatch_on_id'
+    ? 'id_data_error'
+    : 'phone_data_error'
 }
 
 // Used to focus / highlight the offending field after the user dismisses
 // the save-collision modal.
 export function fieldsToHighlight(detail: ConflictDetail): CollidingField[] {
-  return isPhoneCollision(detail) ? ['phone'] : ['nationalId']
+  return errorTypeOf(detail) === 'phone_data_error' ? ['phone'] : ['nationalId']
 }
 
 // ─── Inline-on-field note (citizen edit form) ────────────────────────────────
@@ -181,8 +158,5 @@ export function inlineFieldNote(alert: Alert): string {
   const side = resolveOtherSide(alert)
   const other = describeOtherSide({ fullname: side.fullname })
   const value = collidingValueOf(alert)
-  const idHint = otherIdNote(alert)
-  const source = side.fromImport ? ' (מהרשומה שיובאה)' : ''
-  const base = `מתנגש עם ${other}${source}: ${value}`
-  return idHint ? `${base} (${idHint})` : base
+  return `מתנגש עם ${other}: ${value}`
 }

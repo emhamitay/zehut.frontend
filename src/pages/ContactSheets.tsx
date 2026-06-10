@@ -4,13 +4,11 @@ import {
   generateContactPage,
   getContactPage,
   listContactPages,
-  type AlertKind,
   type ContactPage,
   type ContactPageEntry,
   type ContactPageSummary,
   type CrossPageWarning,
 } from '../lib/api'
-import { ALERT_LABELS } from '../lib/alert-labels'
 import { Button } from '@/components/ui/button'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -70,8 +68,8 @@ function WarningNote({
   // The note sits directly *below* the citizen it belongs to, which is
   // ambiguous on a dense sheet. The up-arrow + the owner's own name make
   // it unmistakable that the warning is about the row above, not below.
-  const reason = ALERT_LABELS[w.alertKind as AlertKind] ?? w.alertKind
-  const ownerName = owner.fullname ?? 'הרשומה שמעליה'
+  const ownerName = owner.fullname ?? 'אדם ללא שם'
+  const otherName = w.otherFullname ?? 'אדם ללא שם'
   return (
     <tr className="bg-red-50 text-xs print:bg-red-50">
       <td className="border-b border-red-100 py-1 text-center align-top text-base font-bold leading-tight text-red-500">
@@ -84,10 +82,11 @@ function WarningNote({
         <span className="font-semibold">שגיאת נתונים עבור {ownerName}</span>
         <span className="text-red-400"> (הרשומה שמעליה ↑)</span>
         {' — '}
-        מתנגש עם <strong>{w.otherFullname ?? 'לא ידוע'}</strong>
-        {w.otherNationalId ? ` (ת.ז. ${w.otherNationalId})` : ''}
-        {reason ? <>, {reason}</> : null}. מופיע בדף&nbsp;#{w.otherPageNumber} של{' '}
-        <strong>{w.otherCreatedByUsername}</strong>. יש לתקן באחד הצדדים.
+        אותו נתון רשום גם אצל <strong>{otherName}</strong>
+        {w.otherNationalId ? ` (ת.ז. ${w.otherNationalId})` : ''}, המופיע
+        בדף&nbsp;#{w.otherPageNumber} של{' '}
+        <strong>{w.otherCreatedByUsername}</strong>. סביר שאחד הנתונים הוקלד
+        בטעות — יש לתקן באחד הצדדים.
       </td>
     </tr>
   )
