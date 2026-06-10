@@ -43,8 +43,7 @@ export function DataErrorRow({
   editHref,
   variant = 'interactive',
 }: Props) {
-  const other = alert.relatedPerson
-  const { label, headline, explanation, otherName, otherIdNote } =
+  const { label, headline, explanation, other, otherName, otherIdNote } =
     describeDataError(alert)
   const href = editHref ?? `/citizens/${selfPersonId}#${DATA_ERROR_ANCHOR}`
 
@@ -65,28 +64,34 @@ export function DataErrorRow({
           {explanation}
         </p>
 
-        {other ? (
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            <span className="text-xs text-muted-foreground">האדם השני:</span>
-            {variant === 'interactive' ? (
-              <Link
-                to={`/citizens/${other.id}#${DATA_ERROR_ANCHOR}`}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                {otherName}
-              </Link>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium">
-                {otherName}
-              </span>
-            )}
-            {otherIdNote ? (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                {otherIdNote}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <span className="text-xs text-muted-foreground">האדם השני:</span>
+          {other.personId && variant === 'interactive' ? (
+            <Link
+              to={`/citizens/${other.personId}#${DATA_ERROR_ANCHOR}`}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
+            >
+              {otherName}
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium">
+              {otherName}
+            </span>
+          )}
+          {other.fromImport ? (
+            <span
+              className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              title="הרשומה הזו לא נשמרה כאזרח נפרד כי תעודת הזהות זהה. הנתונים שמופיעים כאן הם מהקובץ שיובא."
+            >
+              מהקובץ שיובא
+            </span>
+          ) : null}
+          {otherIdNote ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              {otherIdNote}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {variant === 'interactive' ? (
