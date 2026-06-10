@@ -55,16 +55,49 @@ const DIFFERENT_ID_KINDS = new Set<AlertKind>([
   'id_name_mismatch_on_phone',
 ])
 
+// The "other side" of a data error. Usually a live citizen record
+// (`relatedPerson`), but for a same-ID import conflict the two rows
+// merged into one person and the conflicting row exists only in the
+// snapshot — so we fall back to `details.incoming`. `fromImport` is true
+// in that case, and `personId` is null (there is nothing to link to).
+export type OtherSide = {
+  fullname: string | null
+  nationalId: string | null
+  phones: string[]
+  personId: string | null
+  fromImport: boolean
+}
+
+export function resolveOtherSide(alert: Alert): OtherSide {
+  const rp = alert.relatedPerson
+  if (rp) {
+    return {
+      fullname: rp.fullname,
+      nationalId: rp.nationalId,
+      phones: rp.phones,
+      personId: rp.id,
+      fromImport: false,
+    }
+  }
+  const inc = alert.details.incoming
+  return {
+    fullname: inc.fullname,
+    nationalId: inc.id,
+    phones: inc.phone ?? [],
+    personId: null,
+    fromImport: true,
+  }
+}
+
 export function otherIdNote(alert: Alert): string | null {
   if (!DIFFERENT_ID_KINDS.has(alert.kind)) return null
-  const id = alert.relatedPerson?.nationalId
+  const id = resolveOtherSide(alert).nationalId
   return id ? `ת"ז שונה: ${id}` : 'בעל/ת תעודת זהות שונה'
 }
 
 function collidingValueOf(alert: Alert): string {
   if (alert.collidingValue) return alert.collidingValue
-  const other = alert.relatedPerson
-  if (!other) return '—'
+  const other = resolveOtherSide(alert)
   return (
     (alert.errorType === 'id_data_error' ? other.nationalId : other.phones[0]) ??
     '—'
@@ -76,23 +109,25 @@ export type DataErrorParts = {
   label: string
   headline: string
   explanation: string
+  other: OtherSide
   otherName: string
   otherIdNote: string | null
 }
 
 export function describeDataError(alert: Alert): DataErrorParts {
-  const otherName = describeOtherSide({
-    fullname: alert.relatedPerson?.fullname ?? null,
-  })
+  const other = resolveOtherSide(alert)
+  const otherName = describeOtherSide({ fullname: other.fullname })
   const value = collidingValueOf(alert)
+  const source = other.fromImport ? ' (מהרשומה שיובאה לקובץ)' : ''
   const headline =
     alert.errorType === 'id_data_error'
-      ? `תעודת זהות ${value} מופיעה גם אצל ${otherName}.`
-      : `מספר טלפון ${value} מופיע גם אצל ${otherName}.`
+      ? `תעודת זהות ${value} מופיעה גם אצל ${otherName}${source}.`
+      : `מספר טלפון ${value} מופיע גם אצל ${otherName}${source}.`
   return {
     label: DATA_ERROR_TYPE_LABELS[alert.errorType],
     headline,
     explanation: dataErrorExplanation(alert.kind),
+    other,
     otherName,
     otherIdNote: otherIdNote(alert),
   }
@@ -143,14 +178,11 @@ export function fieldsToHighlight(detail: ConflictDetail): CollidingField[] {
 // Uses the server-supplied `collidingValue` so the inline note points at
 // the actual offending value, not a guess like `relatedPerson.phones[0]`.
 export function inlineFieldNote(alert: Alert): string {
-  const other = describeOtherSide({
-    fullname: alert.relatedPerson?.fullname ?? null,
-  })
+  const side = resolveOtherSide(alert)
+  const other = describeOtherSide({ fullname: side.fullname })
   const value = collidingValueOf(alert)
   const idHint = otherIdNote(alert)
-  const base =
-    alert.errorType === 'id_data_error'
-      ? `מתנגש עם ${other}: ${value}`
-      : `מתנגש עם ${other}: ${value}`
+  const source = side.fromImport ? ' (מהרשומה שיובאה)' : ''
+  const base = `מתנגש עם ${other}${source}: ${value}`
   return idHint ? `${base} (${idHint})` : base
 }
