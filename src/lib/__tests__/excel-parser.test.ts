@@ -134,6 +134,13 @@ describe('header keyword variants', () => {
     expect(result).not.toBeNull()
     expect(result![0].phone).toEqual(['0521234567'])
   })
+
+  it('recognises "סלולר" as phone', () => {
+    const ws = sheet([['שם מלא', 'סלולר'], ['ישראל כהן', '0521234567']])
+    const result = tryParseExcelClientSide(ws)
+    expect(result).not.toBeNull()
+    expect(result![0].phone).toEqual(['0521234567'])
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -213,6 +220,16 @@ describe('multiple phone columns', () => {
     const result = tryParseExcelClientSide(ws)
     expect(result).not.toBeNull()
     expect(result![0].phone).toEqual(['0521234567', '0541234567'])
+  })
+
+  it('deduplicates the same phone appearing in two columns of one row', () => {
+    const ws = sheet([
+      ['שם מלא', 'טלפון', 'נייד'],
+      ['ישראל כהן', '0521234567', '052-123-4567'],
+    ])
+    const result = tryParseExcelClientSide(ws)
+    expect(result).not.toBeNull()
+    expect(result![0].phone).toEqual(['0521234567'])
   })
 })
 
@@ -361,6 +378,52 @@ describe('shouldFallbackToAiAfterClientParse', () => {
       shouldFallbackToAiAfterClientParse([
         { id: '123456789', fullname: 'ישראל כהן', phone: ['0521234567'] },
         { id: null, fullname: 'שרה לוי', phone: [] },
+      ])
+    ).toBe(false)
+  })
+
+  it('returns true when more than half the contacts have no phone', () => {
+    // 2 of 3 phoneless → phone column likely misidentified
+    expect(
+      shouldFallbackToAiAfterClientParse([
+        { id: null, fullname: 'ישראל כהן', phone: ['0521234567'] },
+        { id: null, fullname: 'שרה לוי', phone: [] },
+        { id: null, fullname: 'דוד מזרחי', phone: [] },
+      ])
+    ).toBe(true)
+  })
+
+  it('returns true when more than half the contacts have no name and no id', () => {
+    // 2 of 3 have neither name nor id → name column likely missed
+    expect(
+      shouldFallbackToAiAfterClientParse([
+        { id: null, fullname: 'ישראל כהן', phone: ['0521234567'] },
+        { id: null, fullname: null, phone: ['0541234567'] },
+        { id: null, fullname: null, phone: ['0531234567'] },
+      ])
+    ).toBe(true)
+  })
+
+  it('a file with phones but no names at all falls back to AI', () => {
+    // Every contact has a phone but no name/id. Per the user requirement
+    // ("if a row has no fullname, send to AI") this is treated as a likely
+    // missed name column and falls back.
+    expect(
+      shouldFallbackToAiAfterClientParse([
+        { id: null, fullname: null, phone: ['0521234567'] },
+        { id: null, fullname: null, phone: ['0541234567'] },
+      ])
+    ).toBe(true)
+  })
+
+  it('does not over-trigger when most rows have both name and phone', () => {
+    // 3 of 4 complete, only 1 missing a name → below the 50% threshold.
+    expect(
+      shouldFallbackToAiAfterClientParse([
+        { id: null, fullname: 'ישראל כהן', phone: ['0521234567'] },
+        { id: null, fullname: 'שרה לוי', phone: ['0541234567'] },
+        { id: '123456789', fullname: 'דוד מזרחי', phone: ['0531234567'] },
+        { id: null, fullname: null, phone: ['0501234567'] },
       ])
     ).toBe(false)
   })
