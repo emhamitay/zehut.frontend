@@ -59,7 +59,14 @@ export type AuthUser = {
   createdAt: string
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+function normalizeApiBase(url: string): string {
+  const trimmed = url.trim()
+  if (!trimmed) return ''
+  if (/^https?:\/\//i.test(trimmed)) return trimmed.replace(/\/$/, '')
+  return `https://${trimmed}`.replace(/\/$/, '')
+}
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL ?? '')
 
 function apiUrl(path: string): string {
   return `${API_BASE}${path}`
