@@ -118,7 +118,7 @@ export default function UploadFlow() {
           contacts = clientContacts
         } else {
           // Structure too ambiguous — fall back to server-side extraction
-          const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(payload.sheet)
+          const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(payload.sheet, { raw: true })
           setExtractingMessageIndex(0)
           setPhase({ kind: 'extracting', fileName: file.name })
           contacts = await extractContacts({ type: 'excel', rows })

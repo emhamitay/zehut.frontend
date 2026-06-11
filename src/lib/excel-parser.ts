@@ -12,7 +12,7 @@ const ID_KEYWORDS = [
   'תז', 'ת.ז', 'ת״ז', 'תעודת זהות', 'id', 'מזהה', 'tz', 'מספר זהות',
 ]
 const PHONE_KEYWORDS = [
-  'טלפון', 'נייד', 'phone', 'mobile', 'cell', 'פלאפון', 'tel', 'טל',
+  'טלפון', 'נייד', 'phone', 'mobile', 'cell', 'פלאפון', 'tel', 'טל', 'סלולר',
 ]
 
 type ColumnRole = 'fullname' | 'firstname' | 'lastname' | 'id' | 'phone' | 'unknown'
@@ -184,13 +184,14 @@ export function tryParseExcelClientSide(sheet: XLSX.WorkSheet): Contact[] | null
           id = raw ? normalizeId(raw) : null
         }
 
-        // Phones — collect from all phone columns
+        // Phones — collect from all phone columns, dedup within the row
         const phone: string[] = []
+        const seen = new Set<string>()
         for (const ci of phoneCols) {
           const raw = (row[ci] ?? '').trim()
           if (raw) {
             const p = normalizePhone(raw)
-            if (p) phone.push(p)
+            if (p && !seen.has(p)) { seen.add(p); phone.push(p) }
           }
         }
 
@@ -289,11 +290,12 @@ export function tryParseExcelClientSide(sheet: XLSX.WorkSheet): Contact[] | null
       }
 
       const phone: string[] = []
+      const seen = new Set<string>()
       for (const ci of sniffPhoneCols) {
         const raw = (row[ci] ?? '').trim()
         if (raw) {
           const p = normalizePhone(raw)
-          if (p) phone.push(p)
+          if (p && !seen.has(p)) { seen.add(p); phone.push(p) }
         }
       }
 
@@ -312,6 +314,18 @@ export function shouldFallbackToAiAfterClientParse(contacts: Contact[]): boolean
 
   const totalPhones = contacts.reduce((sum, c) => sum + c.phone.length, 0)
   if (totalPhones === 0) return true
+
+  // If more than half the contacts have no phone, the phone column was likely
+  // misidentified — fall back to AI rather than commit incomplete records.
+  const phonelessRatio =
+    contacts.filter(c => c.phone.length === 0).length / contacts.length
+  if (phonelessRatio > 0.5) return true
+
+  // If more than half the contacts have neither a name nor an id, the name
+  // column was likely missed — fall back to AI.
+  const namelessRatio =
+    contacts.filter(c => !c.fullname && !c.id).length / contacts.length
+  if (namelessRatio > 0.5) return true
 
   return false
 }
