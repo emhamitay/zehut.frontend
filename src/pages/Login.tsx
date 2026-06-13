@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { Button } from '@/components/ui/button'
+import { SparkIcon, UsersIcon } from '@/components/icons'
 import {
   Card,
   CardContent,
@@ -37,12 +38,16 @@ export default function Login() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#f8fafc_0%,#f0f9ff_45%,#f8fafc_100%)] px-4"
+      className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#e0f2fe_0%,#f0f9ff_45%,#f8fafc_100%)] px-4"
       dir="rtl"
     >
-      <Card className="w-full max-w-sm">
+      <Card className="glass-surface animate-rise-in w-full max-w-sm shadow-[0_20px_45px_-30px_rgba(2,132,199,0.75)]">
         <CardHeader>
-          <CardTitle className="text-2xl">התחברות</CardTitle>
+          <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+            <UsersIcon className="h-5 w-5" />
+          </div>
+          <CardTitle className="text-2xl font-extrabold text-slate-900">התחברות</CardTitle>
+          <p className="text-sm text-slate-600">התחברו למערכת כדי להמשיך לעבודה השוטפת</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -54,7 +59,7 @@ export default function Login() {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                className="w-full"
                 autoComplete="username"
                 required
               />
@@ -68,7 +73,7 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                className="w-full"
                 autoComplete="current-password"
                 required
               />
@@ -81,6 +86,10 @@ export default function Login() {
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? 'מתחבר...' : 'התחבר'}
             </Button>
+            <p className="inline-flex items-center gap-1 text-xs text-slate-500">
+              <SparkIcon className="h-3.5 w-3.5" />
+              שמירה על סדר ועדכון שוטף משפרים את איכות הנתונים לאורך זמן.
+            </p>
           </form>
         </CardContent>
       </Card>

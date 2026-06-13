@@ -64,3 +64,47 @@ body {
 	color: var(--foreground);
 	font-family: var(--font-sans);
 }
+
+@layer base {
+	input,
+	select,
+	textarea {
+		@apply rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-all duration-200;
+	}
+
+	input:focus,
+	select:focus,
+	textarea:focus {
+		@apply border-ring ring-2 ring-ring/25 outline-none;
+	}
+
+	input::placeholder,
+	textarea::placeholder {
+		@apply text-muted-foreground/80;
+	}
+
+	a {
+		@apply transition-colors duration-200;
+	}
+}
+
+@keyframes rise-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@layer utilities {
+	.animate-rise-in {
+		animation: rise-in 420ms ease-out both;
+	}
+
+	.glass-surface {
+		@apply border border-white/60 bg-white/75 backdrop-blur-md;
+	}
+}

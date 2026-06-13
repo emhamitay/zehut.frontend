@@ -8,6 +8,7 @@ import {
 } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import { Button } from '@/components/ui/button'
+import { SparkIcon, UsersIcon, WarningIcon } from '@/components/icons'
 
 export default function Users() {
   const { user: me } = useAuth()
@@ -62,9 +63,19 @@ export default function Users() {
   return (
     <AppLayout title="משתמשים">
       <div className="space-y-6">
+        <section className="rounded-xl border border-sky-200/70 bg-[linear-gradient(135deg,rgba(224,242,254,0.65),rgba(255,255,255,0.92))] p-4">
+          <h2 className="inline-flex items-center gap-2 text-base font-bold text-sky-900">
+            <UsersIcon className="h-4 w-4" />
+            ניהול משתמשים
+          </h2>
+          <p className="mt-2 text-sm text-slate-700">
+            לכל איש צוות מומלץ משתמש אישי, כדי לשמור על מעקב ברור בדפי הקשר ובפעולות שבוצעו.
+          </p>
+        </section>
+
         <form
           onSubmit={onCreate}
-          className="grid gap-3 rounded-lg border border-border/70 bg-card/50 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+          className="grid gap-3 rounded-xl border border-border/70 bg-white/80 p-4 shadow-sm sm:grid-cols-[1fr_1fr_auto] sm:items-end"
         >
           <div className="space-y-1">
             <label htmlFor="new-username" className="text-sm font-medium">
@@ -74,7 +85,7 @@ export default function Users() {
               id="new-username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+              className="w-full"
               required
             />
           </div>
@@ -87,18 +98,19 @@ export default function Users() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+              className="w-full"
               required
             />
           </div>
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" disabled={busy} className="sm:mb-px">
             {busy ? 'מוסיף...' : 'הוסף משתמש'}
           </Button>
         </form>
 
         {error && (
-          <div role="alert" className="text-sm text-destructive">
-            {error}
+          <div role="alert" className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <WarningIcon className="h-4 w-4" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -107,14 +119,17 @@ export default function Users() {
         ) : (
           <ul
             data-testid="users-list"
-            className="divide-y divide-border/70 rounded-lg border border-border/70 bg-card/50"
+            className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/70 bg-white/85 shadow-sm"
           >
             {users.map((u) => (
               <li
                 key={u.id}
-                className="flex items-center justify-between px-4 py-2 text-sm"
+                className="flex items-center justify-between px-4 py-3 text-sm transition hover:bg-sky-50/45"
               >
-                <span className="font-medium">{u.username}</span>
+                <span className="inline-flex items-center gap-2 font-medium text-slate-800">
+                  <UsersIcon className="h-4 w-4 text-sky-600" />
+                  {u.username}
+                </span>
                 <Button
                   variant="destructive"
                   size="sm"
@@ -128,6 +143,11 @@ export default function Users() {
             ))}
           </ul>
         )}
+
+        <p className="inline-flex items-center gap-1 text-xs text-slate-500">
+          <SparkIcon className="h-3.5 w-3.5" />
+          מומלץ לשמור הרשאות גישה רק למשתמשים פעילים.
+        </p>
       </div>
     </AppLayout>
   )
