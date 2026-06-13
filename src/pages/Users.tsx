@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import { Button } from '@/components/ui/button'
 import { SparkIcon, UsersIcon, WarningIcon } from '@/components/icons'
+import PasswordField from '@/components/PasswordField'
 
 export default function Users() {
   const { user: me } = useAuth()
@@ -93,9 +94,8 @@ export default function Users() {
             <label htmlFor="new-password" className="text-sm font-medium">
               סיסמה
             </label>
-            <input
+            <PasswordField
               id="new-password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full"

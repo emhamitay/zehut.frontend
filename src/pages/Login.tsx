@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { Button } from '@/components/ui/button'
 import { SparkIcon, UsersIcon } from '@/components/icons'
+import PasswordField from '@/components/PasswordField'
 import {
   Card,
   CardContent,
@@ -68,9 +69,8 @@ export default function Login() {
               <label htmlFor="password" className="text-sm font-medium">
                 סיסמה
               </label>
-              <input
+              <PasswordField
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full"
