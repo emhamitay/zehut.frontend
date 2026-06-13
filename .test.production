@@ -1,0 +1,2 @@
+VITE_API_BASE_URL=https://zehutbackend-production.up.railway.app
+VITE_AI_SENDS_DATA=true
